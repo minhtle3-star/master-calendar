@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Master Calendar</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    /* ──────────────────────────────────────────
+       RESET & BASE
+    ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4f8; color: #1e293b; }
+
+    /* ──────────────────────────────────────────
+       LAYOUT
+    ────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5986 100%);
+      color: white;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      flex-shrink: 0;
+      z-index: 20;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+    .header-search {
+      flex: 1; max-width: 340px;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.15); border-radius: 8px;
+      padding: 6px 12px;
+    }
+    .header-search input {
+      background: transparent; border: none; outline: none;
+      color: white; font-size: .9rem; width: 100%;
+    }
+    .header-search input::placeholder { color: rgba(255,255,255,.6); }
+    .header-search svg { opacity: .7; flex-shrink: 0; }
+    .view-toggle { display: flex; gap: 4px; margin-left: auto; }
+    .view-btn {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      color: white; border-radius: 6px; padding: 6px 14px; cursor: pointer;
+      font-size: .85rem; font-weight: 500; transition: all .15s;
+    }
+    .view-btn.active { background: rgba(255,255,255,.28); border-color: rgba(255,255,255,.5); }
+    .view-btn:hover:not(.active) { background: rgba(255,255,255,.2); }
+    #event-count { font-size: .82rem; color: rgba(255,255,255,.65); white-space: nowrap; }
+
+    /* BODY BELOW HEADER */
+    .body { display: flex; flex: 1; overflow: hidden; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .filter-section h3 {
+      font-size: .72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #94a3b8; margin-bottom: 8px;
+    }
+    .filter-section select, .filter-section input[type="date"] {
+      width: 100%; padding: 7px 10px;
+      border: 1px solid #e2e8f0; border-radius: 6px;
+      font-size: .85rem; color: #1e293b; background: white;
+      cursor: pointer; outline: none;
+    }
+    .filter-section select:focus, .filter-section input[type="date"]:focus {
+      border-color: #2d5986; box-shadow: 0 0 0 3px rgba(45,89,134,.12);
+    }
+    .date-range { display: flex; flex-direction: column; gap: 6px; }
+    .date-range label { font-size: .78rem; color: #64748b; }
+
+    /* Checkbox filters */
+    .checkbox-group { display: flex; flex-direction: column; gap: 4px; }
+    .checkbox-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 6px; border-radius: 5px; cursor: pointer;
+      font-size: .83rem; color: #374151; transition: background .1s;
+    }
+    .checkbox-item:hover { background: #f8fafc; }
+    .checkbox-item input { cursor: pointer; accent-color: #2d5986; width: 14px; height: 14px; }
+    .cat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    .status-pill-sm {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 1px 6px; border-radius: 9px; font-size: .72rem; font-weight: 600;
+    }
+    .status-green-sm  { background: #dcfce7; color: #15803d; }
+    .status-blue-sm   { background: #dbeafe; color: #1d4ed8; }
+    .status-black-sm  { background: #1f2937; color: #f9fafb; }
+    .status-na-sm     { background: #f1f5f9; color: #94a3b8; }
+
+    .reset-btn {
+      width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;
+      background: #f8fafc; color: #64748b; font-size: .83rem; cursor: pointer;
+      transition: all .15s;
+    }
+    .reset-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+    /* MAIN CONTENT */
+    .main { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* ──────────────────────────────────────────
+       LOADING
+    ────────────────────────────────────────── */
+    #loading {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 60vh; gap: 16px; color: #64748b;
+    }
+    .spinner {
+      width: 40px; height: 40px; border: 4px solid #e2e8f0;
+      border-top-color: #2d5986; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ──────────────────────────────────────────
+       LIST VIEW
+    ────────────────────────────────────────── */
+    #list-view { display: flex; flex-direction: column; gap: 28px; }
+
+    .day-group {}
+    .day-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .day-date-badge {
+      background: #1e3a5f; color: white;
+      border-radius: 8px; padding: 6px 12px;
+      font-size: .78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap;
+    }
+    .day-label { font-size: .95rem; font-weight: 600; color: #1e293b; }
+    .day-divider { flex: 1; height: 1px; background: #e2e8f0; }
+
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+
+    .event-card {
+      background: white; border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: box-shadow .15s, transform .1s;
+      border-left: 4px solid var(--cat-color, #94a3b8);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .event-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-1px); }
+
+    .event-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .event-title { font-size: .9rem; font-weight: 600; color: #1e293b; line-height: 1.3; }
+    .cat-badge {
+      padding: 2px 8px; border-radius: 20px; font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; flex-shrink: 0;
+      color: white;
+    }
+    .event-meta { font-size: .78rem; color: #64748b; display: flex; flex-direction: column; gap: 3px; }
+    .meta-row { display: flex; align-items: center; gap: 5px; }
+    .meta-icon { width: 12px; height: 12px; opacity: .6; flex-shrink: 0; }
+
+    .dept-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dept-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 9px; font-size: .68rem; font-weight: 600;
+    }
+    .dept-name { opacity: .75; }
+    .dept-status { font-weight: 700; }
+
+    /* ──────────────────────────────────────────
+       CALENDAR VIEW
+    ────────────────────────────────────────── */
+    #calendar-view {}
+    .cal-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .cal-nav h2 { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+    .cal-nav-btn {
+      background: white; border: 1px solid #e2e8f0; border-radius: 6px;
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; color: #374151;
+    }
+    .cal-nav-btn:hover { background: #f0f4f8; border-color: #94a3b8; }
+    .today-btn {
+      padding: 6px 12px; background: white; border: 1px solid #e2e8f0;
+      border-radius: 6px; font-size: .82rem; cursor: pointer; font-weight: 500;
+      transition: all .15s; color: #374151;
+    }
+    .today-btn:hover { background: #1e3a5f; color: white; border-color: #1e3a5f; }
+
+    .cal-grid-wrapper { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+    .cal-weekdays {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    }
+    .cal-weekday {
+      text-align: center; padding: 10px 4px;
+      font-size: .72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #64748b;
+    }
+    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-day {
+      min-height: 110px; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
+      padding: 8px 6px; cursor: pointer; transition: background .1s;
+      position: relative;
+    }
+    .cal-day:hover { background: #f8fafc; }
+    .cal-day.other-month { background: #fafafa; }
+    .cal-day.today { background: #eff6ff; }
+    .cal-day.today .cal-day-num { background: #1e3a5f; color: white; border-radius: 50%; }
+    .cal-day-num {
+      font-size: .82rem; font-weight: 600; color: #374151;
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+    }
+    .cal-day.other-month .cal-day-num { color: #cbd5e1; }
+    .cal-events { display: flex; flex-direction: column; gap: 2px; }
+    .cal-event-pill {
+      font-size: .68rem; padding: 1px 5px; border-radius: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: white; font-weight: 500; cursor: pointer;
+    }
+    .cal-more { font-size: .68rem; color: #64748b; font-weight: 600; padding: 1px 4px; cursor: pointer; }
+
+    /* ──────────────────────────────────────────
+       MODAL
+    ────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: white; border-radius: 14px; width: 100%; max-width: 560px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      transform: translateY(8px); transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      border-top: 5px solid var(--cat-color, #94a3b8);
+      border-radius: 14px 14px 0 0;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; line-height: 1.3; }
+    .modal-close {
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all .15s; font-size: 1.1rem;
+    }
+    .modal-close:hover { background: #fee2e2; color: #dc2626; }
+    .modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-section-title {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #94a3b8; margin-bottom: 8px;
+    }
+    .modal-info-row { display: flex; align-items: flex-start; gap: 10px; color: #374151; font-size: .88rem; }
+    .modal-info-icon { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; opacity: .6; }
+    .dept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .dept-card {
+      border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px;
+    }
+    .dept-card-name { font-size: .72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .dept-card-status { font-size: .85rem; font-weight: 700; }
+    .dept-card.green  { background: #f0fdf4; border-color: #86efac; }
+    .dept-card.green .dept-card-status  { color: #15803d; }
+    .dept-card.blue   { background: #eff6ff; border-color: #93c5fd; }
+    .dept-card.blue .dept-card-status   { color: #1d4ed8; }
+    .dept-card.black  { background: #111827; border-color: #374151; }
+    .dept-card.black .dept-card-name  { color: #9ca3af; }
+    .dept-card.black .dept-card-status { color: #f9fafb; }
+    .dept-card.na     { background: #f8fafc; border-color: #e2e8f0; }
+    .dept-card.na .dept-card-status   { color: #94a3b8; }
+
+    /* Status legend */
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: .75rem; color: #64748b; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: #94a3b8;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty-state svg { opacity: .35; }
+    .empty-state h3 { color: #64748b; font-size: 1rem; }
+    .empty-state p { font-size: .85rem; }
+
+    /* No-events in day modal */
+    .day-event-list { display: flex; flex-direction: column; gap: 8px; }
+    .day-event-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; background: #f8fafc;
+      border-radius: 8px; cursor: pointer; border-left: 3px solid var(--cat-color, #94a3b8);
+      transition: background .1s;
+    }
+    .day-event-item:hover { background: #f0f4f8; }
+    .day-event-time { font-size: .78rem; color: #64748b; white-space: nowrap; min-width: 72px; }
+    .day-event-name { font-size: .85rem; font-weight: 600; color: #1e293b; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* ──────────────────────────────────────────
+       RESPONSIVE
+    ────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .header h1 { font-size: 1rem; }
+      .events-grid { grid-template-columns: 1fr; }
+      .cal-day { min-height: 70px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ─── HEADER ─────────────────────────────── -->
+  <header class="header">
+    <h1>&#128197; Master Calendar</h1>
+    <div class="header-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search events…" />
+    </div>
+    <span id="event-count"></span>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-list" onclick="setView('list')">&#9776; List</button>
+      <button class="view-btn" id="btn-calendar" onclick="setView('calendar')">&#128197; Calendar</button>
+    </div>
+  </header>
+
+  <!-- ─── BODY ────────────────────────────────── -->
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+      <!-- Date Range -->
+      <div class="filter-section">
+        <h3>Date Range</h3>
+        <div class="date-range">
+          <label>From</label>
+          <input type="date" id="filter-from" />
+          <label>To</label>
+          <input type="date" id="filter-to" />
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="filter-section">
+        <h3>Category</h3>
+        <div class="checkbox-group" id="cat-filters"></div>
+      </div>
+
+      <!-- Department -->
+      <div class="filter-section">
+        <h3>Department Status</h3>
+        <select id="filter-dept">
+          <option value="">All Departments</option>
+          <option>Facilities</option>
+          <option>Production</option>
+          <option>Comms</option>
+          <option>Midweek Kids</option>
+          <option>Worship</option>
+        </select>
+        <div style="margin-top:8px;" class="checkbox-group" id="status-filters"></div>
+      </div>
+
+      <!-- Legend -->
+      <div class="filter-section">
+        <h3>Status Legend</h3>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:.78rem;color:#374151;">
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Green — Normal</div>
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span> Blue — Enhanced</div>
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#1f2937;display:inline-block;"></span> Black — High Priority</div>
+          <div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#e2e8f0;display:inline-block;"></span> N/A — Not Involved</div>
+        </div>
+      </div>
+
+      <button class="reset-btn" onclick="resetFilters()">&#10005; Reset All Filters</button>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main" id="main">
+      <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading calendar…</p>
+      </div>
+      <div id="list-view" style="display:none;"></div>
+      <div id="calendar-view" style="display:none;"></div>
+    </main>
+
+  </div>
+</div>
+
+<!-- ─── EVENT DETAIL MODAL ────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header" id="modal-header">
+      <div>
+        <div id="modal-cat-badge" style="margin-bottom:6px;"></div>
+        <div class="modal-title" id="modal-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalBtn()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ─── DAY EVENTS MODAL ──────────────────── -->
+<div class="modal-overlay" id="day-modal-overlay" onclick="closeDayModal(event)">
+  <div class="modal" id="day-modal">
+    <div class="modal-header" id="day-modal-header" style="--cat-color:#1e3a5f;">
+      <div class="modal-title" id="day-modal-title"></div>
+      <button class="modal-close" onclick="closeDayModalBtn()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="day-modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────
+// CONSTANTS
+// ────────────────────────────────────────────────────
+const CATEGORIES = {
+  'Sunday Services':   { color: '#7c3aed', pattern: /sunday service|watermark en espanol|^wake\b/i },
+  'Kids Ministry':     { color: '#d97706', pattern: /\bkids\b|preschool|kaleidoscope|\bk1\b|23 kids|45 kids/i },
+  'Ministry Programs': { color: '#0369a1', pattern: /re:generation|re\|engage|legacy \d|great question|frontlines|gather leadership|careers in motion|trail life/i },
+  'Groups & Discipleship': { color: '#059669', pattern: /small group|discipleship group|community group|asida|multiplying discipleship/i },
+  'Care & Support':    { color: '#db2777', pattern: /support group|care ministry|feeding support|infertility|miscarriage|prenatal/i },
+  'Special Events':    { color: '#dc2626', pattern: /baptism|holiday|retreat|trip information|young adult trip|pine cove|community group weekend/i },
+  'Administrative':    { color: '#475569', pattern: /staff prayer|leadership meeting|leadership team|team meeting|square one|staff |connecting team/i },
+};
+
+const DEPT_NAMES = ['Facilities', 'Production', 'Comms', 'Midweek Kids', 'Worship'];
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS   = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+
+// ────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────
+let allEvents = [];
+let filteredEvents = [];
+let currentView = 'list';
+let calendarDate = new Date();
+let activeFilters = {
+  search: '',
+  categories: new Set(),
+  dept: '',
+  statuses: new Set(),
+  from: null,
+  to: null
+};
+
+// ────────────────────────────────────────────────────
+// HELPERS
+// ────────────────────────────────────────────────────
+function categorizeEvent(name) {
+  for (const [cat, cfg] of Object.entries(CATEGORIES)) {
+    if (cfg.pattern.test(name)) return cat;
+  }
+  return 'Other';
+}
+
+function catColor(cat) {
+  return (CATEGORIES[cat] || {}).color || '#94a3b8';
+}
+
+function parseDetails(text) {
+  const depts = {};
+  DEPT_NAMES.forEach(d => depts[d] = 'N/A');
+  const extra = [];
+  if (!text) return { depts, extra: '' };
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    let matched = false;
+    for (const dept of DEPT_NAMES) {
+      const re = new RegExp(`^${dept}\\s*[-–]\\s*(.+)`, 'i');
+      const m = line.match(re);
+      if (m) {
+        depts[dept] = normalizeStatus(m[1].trim());
+        matched = true; break;
+      }
+    }
+    if (!matched) extra.push(line);
+  }
+  return { depts, extra: extra.join(' | ') };
+}
+
+function normalizeStatus(raw) {
+  if (!raw) return 'N/A';
+  const t = raw.trim();
+  if (/^green/i.test(t)) return 'Green';
+  if (/^blue/i.test(t))  return 'Blue';
+  if (/^black/i.test(t)) return 'Black';
+  if (/^n\/?a/i.test(t)) return 'N/A';
+  // If longer description, grab first word
+  const first = t.split(/[\s;,(]/)[0];
+  if (/green/i.test(first)) return 'Green';
+  if (/blue/i.test(first))  return 'Blue';
+  if (/black/i.test(first)) return 'Black';
+  return 'N/A';
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const parts = str.split('/');
+  if (parts.length !== 3) return null;
+  const [m, d, y] = parts.map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function fmtTime(t) {
+  if (!t) return '';
+  const [hm, ap] = t.split(' ');
+  const [h, m] = hm.split(':');
+  let hour = parseInt(h);
+  const ampm = (ap || '').toUpperCase() || (hour >= 12 ? 'PM' : 'AM');
+  if (ampm === 'PM' && hour < 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  const d = new Date(2000,0,1,hour,parseInt(m||0));
+  return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
+
+function fmtDateFull(d) {
+  return d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+function fmtDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function statusClass(s) {
+  if (s === 'Green') return 'green';
+  if (s === 'Blue')  return 'blue';
+  if (s === 'Black') return 'black';
+  return 'na';
+}
+
+function statusPillClass(s) {
+  return 'status-' + statusClass(s) + '-sm';
+}
+
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ────────────────────────────────────────────────────
+// LOAD CSV
+// ────────────────────────────────────────────────────
+async function loadCSV() {
+  const resp = await fetch('calendar.csv');
+  const text = await resp.text();
+  Papa.parse(text, {
+    header: true,
+    skipEmptyLines: true,
+    complete(results) {
+      allEvents = results.data
+        .map((row, i) => {
+          const date = parseDate(row['Start Date']);
+          if (!date) return null;
+          const { depts, extra } = parseDetails(row['Details']);
+          // Location: prefer the Location column, else first non-dept line in details
+          let loc = (row['Location'] || '').trim();
+          if (!loc && extra) {
+            const firstLine = extra.split('|')[0].trim();
+            if (firstLine && !DEPT_NAMES.some(d => firstLine.includes(d))) loc = firstLine;
+          }
+          return {
+            id: i,
+            subject:   row['Subject'] || '',
+            date,
+            startTime: row['Start Time'] || '',
+            endTime:   row['End Time'] || '',
+            allDay:    row['All Day Event'] === 'True',
+            location:  loc,
+            depts,
+            extra,
+            category:  categorizeEvent(row['Subject'] || '')
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.date - b.date);
+
+      buildCatFilters();
+      buildStatusFilters();
+      applyFilters();
+      renderCurrentView();
+      document.getElementById('loading').style.display = 'none';
+    },
+    error() {
+      document.getElementById('loading').innerHTML = '<p style="color:#dc2626">Failed to load calendar.csv. Make sure it is in the same folder as index.html.</p>';
+    }
+  });
+}
+
+// ────────────────────────────────────────────────────
+// BUILD FILTER UI
+// ────────────────────────────────────────────────────
+function buildCatFilters() {
+  const cats = [...new Set(allEvents.map(e => e.category))].sort();
+  const container = document.getElementById('cat-filters');
+  container.innerHTML = '';
+  for (const cat of cats) {
+    const color = catColor(cat);
+    const id = 'cat-' + cat.replace(/\s/g, '-');
+    container.insertAdjacentHTML('beforeend', `
+      <label class="checkbox-item" for="${id}">
+        <input type="checkbox" id="${id}" value="${esc(cat)}" checked onchange="onCatChange(this)" />
+        <span class="cat-dot" style="background:${color}"></span>
+        <span>${esc(cat)}</span>
+      </label>`);
+    activeFilters.categories.add(cat);
+  }
+}
+
+function buildStatusFilters() {
+  const container = document.getElementById('status-filters');
+  const statuses = [
+    { label: 'Green — Normal',        cls: 'status-green-sm', val: 'Green' },
+    { label: 'Blue — Enhanced',       cls: 'status-blue-sm',  val: 'Blue'  },
+    { label: 'Black — High Priority', cls: 'status-black-sm', val: 'Black' },
+  ];
+  container.innerHTML = '';
+  for (const s of statuses) {
+    const id = 'st-' + s.val;
+    container.insertAdjacentHTML('beforeend', `
+      <label class="checkbox-item" for="${id}">
+        <input type="checkbox" id="${id}" value="${s.val}" onchange="onStatusChange(this)" />
+        <span class="status-pill-sm ${s.cls}">${s.val}</span>
+      </label>`);
+  }
+}
+
+// ────────────────────────────────────────────────────
+// FILTER LOGIC
+// ────────────────────────────────────────────────────
+function applyFilters() {
+  const { search, categories, dept, statuses, from, to } = activeFilters;
+  filteredEvents = allEvents.filter(ev => {
+    // Search
+    if (search && !ev.subject.toLowerCase().includes(search)) return false;
+    // Category
+    if (categories.size > 0 && !categories.has(ev.category)) return false;
+    // Date range
+    if (from && ev.date < from) return false;
+    if (to && ev.date > to) return false;
+    // Status (must have at least one dept with that status)
+    if (statuses.size > 0) {
+      const deptToCheck = dept ? [dept] : DEPT_NAMES;
+      const hasStatus = deptToCheck.some(d => statuses.has(ev.depts[d]));
+      if (!hasStatus) return false;
+    }
+    return true;
+  });
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById('event-count').textContent =
+    filteredEvents.length.toLocaleString() + ' event' + (filteredEvents.length !== 1 ? 's' : '');
+}
+
+// ────────────────────────────────────────────────────
+// EVENT HANDLERS
+// ────────────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', e => {
+  activeFilters.search = e.target.value.toLowerCase().trim();
+  applyFilters(); renderCurrentView();
+});
+
+document.getElementById('filter-from').addEventListener('change', e => {
+  activeFilters.from = e.target.value ? new Date(e.target.value + 'T00:00:00') : null;
+  applyFilters(); renderCurrentView();
+});
+
+document.getElementById('filter-to').addEventListener('change', e => {
+  activeFilters.to = e.target.value ? new Date(e.target.value + 'T23:59:59') : null;
+  applyFilters(); renderCurrentView();
+});
+
+document.getElementById('filter-dept').addEventListener('change', e => {
+  activeFilters.dept = e.target.value;
+  applyFilters(); renderCurrentView();
+});
+
+function onCatChange(cb) {
+  if (cb.checked) activeFilters.categories.add(cb.value);
+  else activeFilters.categories.delete(cb.value);
+  applyFilters(); renderCurrentView();
+}
+
+function onStatusChange(cb) {
+  if (cb.checked) activeFilters.statuses.add(cb.value);
+  else activeFilters.statuses.delete(cb.value);
+  applyFilters(); renderCurrentView();
+}
+
+function resetFilters() {
+  activeFilters.search = '';
+  activeFilters.dept = '';
+  activeFilters.statuses = new Set();
+  activeFilters.from = null;
+  activeFilters.to = null;
+
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value = '';
+  document.getElementById('filter-dept').value = '';
+
+  // Re-check all categories
+  document.querySelectorAll('#cat-filters input[type=checkbox]').forEach(cb => {
+    cb.checked = true;
+    activeFilters.categories.add(cb.value);
+  });
+  // Uncheck all statuses
+  document.querySelectorAll('#status-filters input[type=checkbox]').forEach(cb => {
+    cb.checked = false;
+  });
+
+  applyFilters(); renderCurrentView();
+}
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('btn-list').classList.toggle('active', v === 'list');
+  document.getElementById('btn-calendar').classList.toggle('active', v === 'calendar');
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  if (currentView === 'list') {
+    renderList();
+    document.getElementById('list-view').style.display = 'flex';
+    document.getElementById('calendar-view').style.display = 'none';
+  } else {
+    renderCalendar();
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('calendar-view').style.display = 'block';
+  }
+}
+
+// ────────────────────────────────────────────────────
+// LIST VIEW
+// ────────────────────────────────────────────────────
+function renderList() {
+  const container = document.getElementById('list-view');
+  if (filteredEvents.length === 0) {
+    container.innerHTML = emptyStateHTML('No events match your filters', 'Try adjusting the filters in the sidebar or clearing your search.');
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  for (const ev of filteredEvents) {
+    const key = fmtDateKey(ev.date);
+    if (!groups[key]) groups[key] = { date: ev.date, events: [] };
+    groups[key].events.push(ev);
+  }
+
+  let html = '';
+  for (const key of Object.keys(groups).sort()) {
+    const { date, events } = groups[key];
+    const isToday = fmtDateKey(date) === fmtDateKey(new Date());
+    html += `
+      <div class="day-group">
+        <div class="day-header">
+          <div class="day-date-badge">${date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+          <div class="day-label">${date.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}${isToday?' <span style="background:#dcfce7;color:#15803d;font-size:.72rem;padding:2px 7px;border-radius:9px;font-weight:700;vertical-align:middle;"> TODAY</span>':''}</div>
+          <div class="day-divider"></div>
+        </div>
+        <div class="events-grid">
+          ${events.map(ev => eventCardHTML(ev)).join('')}
+        </div>
+      </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function eventCardHTML(ev) {
+  const color = catColor(ev.category);
+  const timeStr = ev.allDay ? 'All Day'
+    : (ev.startTime ? fmtTime(ev.startTime) : '') + (ev.endTime ? ' – ' + fmtTime(ev.endTime) : '');
+
+  // Build department badges — only show non-N/A unless all are N/A
+  const deptEntries = Object.entries(ev.depts);
+  const nonNA = deptEntries.filter(([,s]) => s !== 'N/A');
+  const showDepts = nonNA.length > 0 ? nonNA : deptEntries.slice(0,2);
+
+  const deptBadges = showDepts.map(([dept, status]) => {
+    const cls = statusClass(status);
+    const bgColors = { green:'#f0fdf4', blue:'#eff6ff', black:'#111827', na:'#f8fafc' };
+    const textColors = { green:'#15803d', blue:'#1d4ed8', black:'#f9fafb', na:'#94a3b8' };
+    const bg = bgColors[cls]; const fg = textColors[cls];
+    return `<span class="dept-badge" style="background:${bg};color:${fg};">
+              <span class="dept-name">${dept}:</span>
+              <span class="dept-status">${status}</span>
+            </span>`;
+  }).join('');
+
+  return `
+    <div class="event-card" style="--cat-color:${color}" onclick="openEvent(${ev.id})">
+      <div class="event-card-header">
+        <div class="event-title">${esc(ev.subject)}</div>
+        <span class="cat-badge" style="background:${color}">${esc(ev.category)}</span>
+      </div>
+      ${timeStr || ev.location ? `
+      <div class="event-meta">
+        ${timeStr ? `<div class="meta-row">
+          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${esc(timeStr)}
+        </div>` : ''}
+        ${ev.location ? `<div class="meta-row">
+          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${esc(ev.location)}
+        </div>` : ''}
+      </div>` : ''}
+      ${deptBadges ? `<div class="dept-badges">${deptBadges}</div>` : ''}
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────
+// CALENDAR VIEW
+// ────────────────────────────────────────────────────
+function renderCalendar() {
+  const container = document.getElementById('calendar-view');
+  const year  = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  const today = new Date();
+  const todayKey = fmtDateKey(today);
+
+  // Build event map for this month
+  const evMap = {};
+  for (const ev of filteredEvents) {
+    const key = fmtDateKey(ev.date);
+    if (!evMap[key]) evMap[key] = [];
+    evMap[key].push(ev);
+  }
+
+  // Days in month
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  const startOffset = firstDay.getDay(); // 0=Sun
+
+  let html = `
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calNav(-1)">&#8592;</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h2>${MONTHS[month]} ${year}</h2>
+        <button class="today-btn" onclick="calToday()">Today</button>
+      </div>
+      <button class="cal-nav-btn" onclick="calNav(1)">&#8594;</button>
+    </div>
+    <div class="cal-grid-wrapper">
+      <div class="cal-weekdays">${WEEKDAYS.map(d=>`<div class="cal-weekday">${d}</div>`).join('')}</div>
+      <div class="cal-days">`;
+
+  // Leading blank cells
+  for (let i = 0; i < startOffset; i++) {
+    const prevDate = new Date(year, month, -startOffset + i + 1);
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${prevDate.getDate()}</div></div>`;
+  }
+
+  // Actual days
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const date = new Date(year, month, d);
+    const key  = fmtDateKey(date);
+    const isToday = key === todayKey;
+    const events = evMap[key] || [];
+    const maxShow = 3;
+    const pills = events.slice(0, maxShow).map(ev => {
+      const color = catColor(ev.category);
+      return `<div class="cal-event-pill" style="background:${color}" onclick="event.stopPropagation();openEvent(${ev.id})" title="${esc(ev.subject)}">${esc(ev.subject)}</div>`;
+    }).join('');
+    const more = events.length > maxShow ? `<div class="cal-more">+${events.length - maxShow} more</div>` : '';
+
+    html += `
+      <div class="cal-day${isToday?' today':''}" onclick="openDay('${key}',${d})">
+        <div class="cal-day-num">${d}</div>
+        <div class="cal-events">${pills}${more}</div>
+      </div>`;
+  }
+
+  // Trailing blank cells
+  const total = startOffset + lastDay.getDate();
+  const trailingCells = (7 - (total % 7)) % 7;
+  for (let i = 1; i <= trailingCells; i++) {
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  }
+
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+function calNav(dir) {
+  calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + dir, 1);
+  renderCalendar();
+}
+function calToday() {
+  calendarDate = new Date();
+  renderCalendar();
+}
+
+function openDay(dateKey, dayNum) {
+  const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
+  const date = new Date(year, month, dayNum);
+  const eventsForDay = filteredEvents.filter(ev => fmtDateKey(ev.date) === dateKey);
+  if (eventsForDay.length === 0) return;
+
+  document.getElementById('day-modal-title').textContent = fmtDateFull(date);
+
+  const sorted = eventsForDay.slice().sort((a, b) => {
+    if (a.allDay) return -1; if (b.allDay) return 1;
+    return (a.startTime || '').localeCompare(b.startTime || '');
+  });
+
+  let html = '<div class="day-event-list">';
+  for (const ev of sorted) {
+    const color = catColor(ev.category);
+    const timeStr = ev.allDay ? 'All Day' : (ev.startTime ? fmtTime(ev.startTime) : '');
+    html += `
+      <div class="day-event-item" style="--cat-color:${color}" onclick="closeDayModalBtn();openEvent(${ev.id})">
+        <div class="day-event-time">${esc(timeStr)}</div>
+        <div>
+          <div class="day-event-name">${esc(ev.subject)}</div>
+          ${ev.location ? `<div style="font-size:.75rem;color:#64748b;margin-top:2px;">${esc(ev.location)}</div>` : ''}
+        </div>
+      </div>`;
+  }
+  html += '</div>';
+  document.getElementById('day-modal-body').innerHTML = html;
+
+  document.getElementById('day-modal-overlay').classList.add('open');
+}
+
+// ────────────────────────────────────────────────────
+// EVENT DETAIL MODAL
+// ────────────────────────────────────────────────────
+function openEvent(id) {
+  const ev = allEvents.find(e => e.id === id);
+  if (!ev) return;
+  const color = catColor(ev.category);
+
+  document.getElementById('modal').style.setProperty('--cat-color', color);
+  document.getElementById('modal-cat-badge').innerHTML =
+    `<span class="cat-badge" style="background:${color}">${esc(ev.category)}</span>`;
+  document.getElementById('modal-title').textContent = ev.subject;
+
+  const timeStr = ev.allDay ? 'All Day'
+    : (ev.startTime ? fmtTime(ev.startTime) : '') + (ev.endTime ? ' – ' + fmtTime(ev.endTime) : '');
+
+  let body = '';
+
+  // Date & time
+  body += `
+    <div>
+      <div class="modal-section-title">Date &amp; Time</div>
+      <div class="modal-info-row">
+        <svg class="modal-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div>${esc(fmtDateFull(ev.date))}${timeStr ? ` &nbsp;·&nbsp; ${esc(timeStr)}` : ''}</div>
+      </div>
+    </div>`;
+
+  // Location
+  if (ev.location) {
+    body += `
+      <div>
+        <div class="modal-section-title">Location</div>
+        <div class="modal-info-row">
+          <svg class="modal-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div>${esc(ev.location)}</div>
+        </div>
+      </div>`;
+  }
+
+  // Department Status
+  body += `
+    <div>
+      <div class="modal-section-title">Department Status</div>
+      <div class="dept-grid">
+        ${DEPT_NAMES.map(dept => {
+          const status = ev.depts[dept] || 'N/A';
+          const cls = statusClass(status);
+          const label = status === 'Green' ? 'Normal' : status === 'Blue' ? 'Enhanced' : status === 'Black' ? 'High Priority' : 'Not Involved';
+          return `
+            <div class="dept-card ${cls}">
+              <div class="dept-card-name">${dept}</div>
+              <div class="dept-card-status">${status} <span style="font-weight:400;font-size:.75rem;opacity:.7;">— ${label}</span></div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalBtn();
+}
+function closeModalBtn() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function closeDayModal(e) {
+  if (e.target === document.getElementById('day-modal-overlay')) closeDayModalBtn();
+}
+function closeDayModalBtn() {
+  document.getElementById('day-modal-overlay').classList.remove('open');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModalBtn(); closeDayModalBtn(); }
+});
+
+// ────────────────────────────────────────────────────
+// EMPTY STATE
+// ────────────────────────────────────────────────────
+function emptyStateHTML(title, msg) {
+  return `
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <h3>${title}</h3>
+      <p>${msg}</p>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────────
+loadCSV();
+</script>
+</body>
+</html>
