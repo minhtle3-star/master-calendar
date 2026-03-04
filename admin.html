@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ministry Admin — Watermark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy:    #003A5D;
+      --navy-d:  #002340;
+      --charcoal:#1D252C;
+      --slate:   #48565A;
+      --cream:   #F2F0EC;
+      --powder:  #B9D2DC;
+      --white:   #FFFFFF;
+      --border:  #DDE3E7;
+      --text:    #1D252C;
+      --sub:     #5A6872;
+      --bg:      #EDEAE5;
+      --green:   #22c55e;
+      --alert:   #8B3A28;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Lato', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+    h1,h2,h3,h4 { font-family: 'Oswald', sans-serif; }
+    .app  { display: flex; flex-direction: column; height: 100vh; }
+    .body { display: flex; flex: 1; overflow: hidden; }
+    .main { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(100deg, var(--charcoal) 0%, var(--navy) 100%);
+      color: white; padding: 0 20px; height: 64px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.35); flex-shrink: 0; z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+    .brand-w {
+      width: 34px; height: 34px; background: white; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .brand-w span { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--navy); letter-spacing: -.02em; }
+    .brand h1 { font-family: 'Oswald', sans-serif; font-weight: 400; font-size: 1rem; letter-spacing: .14em; text-transform: uppercase; color: white; white-space: nowrap; }
+    .hdr-divider { width: 1px; height: 26px; background: rgba(255,255,255,.18); flex-shrink: 0; }
+    .hdr-select {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px; padding: 6px 11px; color: white;
+      font-family: 'Lato', sans-serif; font-size: .85rem; cursor: pointer; outline: none;
+    }
+    .hdr-select option { color: var(--text); background: white; }
+    .hdr-search {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px; padding: 6px 11px; flex: 1; max-width: 300px; transition: background .15s;
+    }
+    .hdr-search:focus-within { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.3); }
+    .hdr-search input { background: none; border: none; outline: none; color: white; font-family: 'Lato', sans-serif; font-size: .85rem; width: 100%; }
+    .hdr-search input::placeholder { color: rgba(255,255,255,.45); }
+    #event-count { font-size: .75rem; color: rgba(255,255,255,.5); white-space: nowrap; margin-left: auto; }
+    .view-toggle { display: flex; gap: 3px; }
+    .view-btn {
+      border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.75); border-radius: 4px; padding: 5px 12px;
+      cursor: pointer; font-family: 'Oswald', sans-serif; font-size: .75rem;
+      font-weight: 400; letter-spacing: .1em; text-transform: uppercase; transition: all .15s;
+    }
+    .view-btn.active { background: var(--powder); color: var(--charcoal); border-color: var(--powder); font-weight: 600; }
+    .view-btn:hover:not(.active) { background: rgba(255,255,255,.14); color: white; }
+    .back-link {
+      color: rgba(255,255,255,.5); text-decoration: none; font-size: .75rem;
+      font-family: 'Oswald', sans-serif; letter-spacing: .08em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 5px; transition: color .15s; flex-shrink: 0;
+    }
+    .back-link:hover { color: white; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 232px; flex-shrink: 0; background: white;
+      border-right: 1px solid var(--border); overflow-y: auto;
+      padding: 18px 15px; display: flex; flex-direction: column; gap: 20px;
+    }
+    .fs-title { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: .7rem; letter-spacing: .13em; text-transform: uppercase; color: var(--navy); padding-bottom: 6px; border-bottom: 2px solid var(--cream); margin-bottom: 8px; }
+    .filter-section select, .filter-section input[type="date"] {
+      width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px;
+      font-family: 'Lato', sans-serif; font-size: .82rem; color: var(--text); background: var(--cream); cursor: pointer; outline: none;
+    }
+    .filter-section select:focus, .filter-section input[type="date"]:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0,58,93,.1); }
+    .date-range { display: flex; flex-direction: column; gap: 4px; }
+    .date-range label { font-size: .72rem; font-weight: 700; letter-spacing: .05em; color: var(--sub); }
+    .cb-group { display: flex; flex-direction: column; gap: 2px; }
+    .cb-item { display: flex; align-items: center; gap: 7px; padding: 3px 5px; border-radius: 4px; cursor: pointer; font-size: .81rem; color: var(--text); transition: background .1s; }
+    .cb-item:hover { background: var(--cream); }
+    .cb-item input { cursor: pointer; accent-color: var(--navy); width: 13px; height: 13px; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .legend-grid { display: flex; flex-direction: column; gap: 6px; font-size: .77rem; color: var(--text); }
+    .legend-row { display: flex; align-items: center; gap: 7px; }
+    .legend-pip { width: 22px; height: 8px; border-radius: 8px; flex-shrink: 0; }
+    .reset-btn {
+      width: 100%; padding: 7px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--cream); color: var(--sub); font-family: 'Oswald', sans-serif;
+      font-size: .72rem; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; cursor: pointer; transition: all .15s;
+    }
+    .reset-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+    /* LOADING */
+    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 65vh; gap: 14px; color: var(--sub); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--navy); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* MINISTRY SELECTOR */
+    .ministry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; max-width: 900px; margin: 60px auto; }
+    .ministry-card {
+      background: white; border-radius: 10px; border: 1px solid var(--border);
+      padding: 28px 22px; text-align: center; cursor: pointer;
+      transition: box-shadow .15s, transform .1s; border-top: 5px solid var(--navy);
+    }
+    .ministry-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,.12); transform: translateY(-2px); }
+    .ministry-card .mc-icon { font-size: 2rem; margin-bottom: 8px; }
+    .ministry-card h3 { font-size: 1rem; letter-spacing: .06em; text-transform: uppercase; color: var(--charcoal); }
+    .ministry-card p { font-size: .8rem; color: var(--sub); margin-top: 6px; }
+
+    /* DASHBOARD */
+    .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: white; border-radius: 8px; border: 1px solid var(--border); padding: 16px 18px; border-top: 4px solid var(--navy); display: flex; flex-direction: column; gap: 3px; }
+    .stat-card.c-powder { border-top-color: var(--powder); }
+    .stat-card.c-slate  { border-top-color: var(--slate); }
+    .stat-card.c-alert  { border-top-color: var(--alert); }
+    .stat-label { font-size: .68rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; color: var(--sub); }
+    .stat-val   { font-family: 'Oswald', sans-serif; font-size: 2.6rem; font-weight: 600; color: var(--charcoal); line-height: 1; margin: 2px 0; }
+    .stat-sub   { font-size: .73rem; color: var(--sub); }
+    .dash-row-label { font-family: 'Oswald', sans-serif; font-weight: 400; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--slate); margin-bottom: 10px; }
+    .dash-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .chart-card { background: white; border-radius: 8px; border: 1px solid var(--border); padding: 18px 20px; }
+    .chart-card h3 { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: .88rem; letter-spacing: .07em; text-transform: uppercase; color: var(--charcoal); margin-bottom: 14px; }
+    .chart-card h3 .chart-sub { font-family: 'Lato', sans-serif; font-weight: 400; font-size: .72rem; text-transform: none; letter-spacing: 0; color: var(--sub); margin-left: 4px; }
+    .chart-wrap { position: relative; }
+    .upcoming-list { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+    .up-item { display: flex; align-items: flex-start; gap: 11px; padding: 9px 11px; border-radius: 6px; background: var(--cream); border-left: 3px solid var(--cat-color, var(--slate)); cursor: pointer; transition: background .1s; }
+    .up-item:hover { background: #E5E1DB; }
+    .up-date { text-align: center; min-width: 38px; flex-shrink: 0; }
+    .up-mo  { font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; color: var(--sub); }
+    .up-day { font-family: 'Oswald', sans-serif; font-size: 1.45rem; font-weight: 600; color: var(--charcoal); line-height: 1.1; }
+    .up-name { font-size: .83rem; font-weight: 700; color: var(--charcoal); }
+    .up-meta { font-size: .71rem; color: var(--sub); margin-top: 2px; }
+
+    /* TASK CARDS */
+    .task-list { display: flex; flex-direction: column; gap: 6px; max-height: 400px; overflow-y: auto; }
+    .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 13px; border-radius: 6px; background: var(--cream); border-left: 4px solid var(--navy); cursor: pointer; transition: background .1s; }
+    .task-item:hover { background: #E5E1DB; }
+    .task-item.urgent  { border-left-color: var(--alert); background: #fef2f2; }
+    .task-item.urgent:hover { background: #fde8e8; }
+    .task-item.pending { border-left-color: var(--powder); background: #EBF4FA; }
+    .task-item.pending:hover { background: #dce9f2; }
+    .task-item.upcoming { border-left-color: #B5712A; background: #fef9f0; }
+    .task-item.upcoming:hover { background: #fdf0dd; }
+    .task-priority { padding: 1px 6px; border-radius: 2px; font-family: 'Oswald', sans-serif; font-size: .58rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; color: white; }
+    .task-event-name { font-weight: 700; font-size: .83rem; color: var(--charcoal); }
+    .task-meta { font-size: .73rem; color: var(--sub); margin-top: 2px; }
+    .task-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px; border-radius: 2px; font-size: .6rem; font-weight: 700; }
+
+    /* EVENT CARDS */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 9px; }
+    .event-card { background: white; border-radius: 7px; border: 1px solid var(--border); padding: 13px 15px; cursor: pointer; transition: box-shadow .15s, transform .1s; border-left: 4px solid var(--cat-color, var(--slate)); display: flex; flex-direction: column; gap: 7px; }
+    .event-card:hover { box-shadow: 0 5px 20px rgba(0,0,0,.1); transform: translateY(-1px); }
+    .ev-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .ev-title { font-size: .87rem; font-weight: 700; color: var(--charcoal); line-height: 1.35; }
+    .cat-tag { padding: 2px 7px; border-radius: 2px; font-family: 'Oswald', sans-serif; font-size: .6rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; color: white; }
+    .ev-meta { font-size: .74rem; color: var(--sub); display: flex; flex-direction: column; gap: 3px; }
+    .meta-row { display: flex; align-items: center; gap: 5px; }
+    .dept-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+    .d-badge { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; border-radius: 2px; font-size: .65rem; font-weight: 700; }
+    .d-badge .dn { opacity: .65; font-weight: 400; }
+    .day-hdr { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
+    .day-badge { background: var(--navy); color: white; border-radius: 5px; padding: 4px 11px; font-family: 'Oswald', sans-serif; font-weight: 500; font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; }
+    .day-badge.is-today { background: var(--charcoal); }
+    .day-name { font-size: .88rem; font-weight: 700; color: var(--text); }
+    .today-chip { background: #EBF4FA; color: var(--navy); font-family: 'Oswald', sans-serif; font-size: .65rem; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; padding: 2px 8px; border-radius: 9px; vertical-align: middle; margin-left: 5px; }
+    .day-line { flex: 1; height: 1px; background: var(--border); }
+
+    /* MODALS */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal { background: white; border-radius: 11px; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.32); transform: translateY(10px); transition: transform .2s; }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-hdr { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-top: 5px solid var(--cat-color, var(--slate)); }
+    .modal-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.15rem; color: var(--charcoal); line-height: 1.25; }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--sub); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; font-size: 1rem; }
+    .modal-close:hover { background: #fee2e2; color: #dc2626; }
+    .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+    .ms-title { font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 500; text-transform: uppercase; letter-spacing: .11em; color: var(--slate); margin-bottom: 6px; }
+    .mi-row { display: flex; align-items: flex-start; gap: 9px; color: var(--text); font-size: .87rem; }
+    .mi-icon { width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; opacity: .5; }
+    .dept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .dept-card { border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; }
+    .dept-card-name { font-size: .67rem; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
+    .dept-card-status { font-size: .86rem; font-weight: 700; }
+    .dept-card.green  { background: #f0fdf4; border-color: #86efac; }
+    .dept-card.green  .dept-card-status { color: #15803d; }
+    .dept-card.blue   { background: #EBF4FA; border-color: var(--powder); }
+    .dept-card.blue   .dept-card-status { color: #1558A0; }
+    .dept-card.black  { background: var(--charcoal); border-color: var(--slate); }
+    .dept-card.black  .dept-card-name   { color: #9ca3af; }
+    .dept-card.black  .dept-card-status { color: white; }
+    .dept-card.na     { background: var(--cream); border-color: var(--border); }
+    .dept-card.na     .dept-card-status { color: var(--sub); }
+
+    /* QUESTIONNAIRE */
+    .form-progress { display: flex; gap: 2px; margin-bottom: 24px; position: sticky; top: -24px; background: var(--bg); padding: 12px 0; z-index: 5; }
+    .form-progress-step { flex: 1; height: 6px; background: var(--border); border-radius: 3px; cursor: pointer; transition: background .3s; position: relative; }
+    .form-progress-step.active { background: var(--navy); }
+    .form-progress-step.complete { background: var(--green); }
+    .form-progress-step:hover::after { content: attr(data-label); position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: var(--charcoal); color: white; font-size: .65rem; padding: 2px 8px; border-radius: 3px; white-space: nowrap; font-family: 'Lato', sans-serif; }
+    .form-section { background: white; border-radius: 8px; border: 1px solid var(--border); padding: 22px 24px; margin-bottom: 16px; }
+    .form-section-title { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: .88rem; letter-spacing: .07em; text-transform: uppercase; color: var(--charcoal); border-bottom: 2px solid var(--cream); padding-bottom: 8px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .form-section-num { background: var(--navy); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .65rem; font-weight: 600; flex-shrink: 0; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: .78rem; font-weight: 700; color: var(--sub); letter-spacing: .03em; margin-bottom: 4px; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
+      font-family: 'Lato', sans-serif; font-size: .85rem; color: var(--text); background: var(--cream); outline: none;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0,58,93,.1); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .form-radio-group { display: flex; gap: 16px; margin-top: 4px; }
+    .form-radio-item { display: flex; align-items: center; gap: 5px; font-size: .84rem; cursor: pointer; }
+    .form-radio-item input { accent-color: var(--navy); cursor: pointer; }
+    .form-cb-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .form-cb-item { display: flex; align-items: center; gap: 5px; font-size: .82rem; cursor: pointer; }
+    .form-cb-item input { accent-color: var(--navy); cursor: pointer; }
+    .form-conditional { margin-top: 10px; padding: 12px; background: #f8f6f2; border-radius: 6px; border: 1px solid var(--border); }
+    .room-entry { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+    .room-entry .form-group { margin-bottom: 0; }
+    .add-room-btn, .remove-room-btn {
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+      font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; transition: all .15s;
+    }
+    .add-room-btn { background: var(--navy); color: white; border-color: var(--navy); }
+    .add-room-btn:hover { background: var(--navy-d); }
+    .remove-room-btn { background: white; color: var(--alert); border-color: var(--alert); padding: 6px 8px; }
+    .remove-room-btn:hover { background: #fef2f2; }
+
+    /* SUMMARY OUTPUT */
+    .request-summary { background: white; border-radius: 8px; border: 1px solid var(--border); padding: 24px; max-width: 750px; margin-top: 20px; }
+    .summary-section { margin-bottom: 16px; }
+    .summary-section-title { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--navy); border-bottom: 2px solid var(--cream); padding-bottom: 4px; margin-bottom: 8px; }
+    .summary-row { display: flex; gap: 8px; font-size: .85rem; padding: 3px 0; }
+    .summary-label { font-weight: 700; color: var(--sub); min-width: 160px; flex-shrink: 0; }
+    .summary-value { color: var(--text); }
+    .summary-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .summary-btn {
+      padding: 8px 18px; border: 1px solid var(--navy); border-radius: 4px; cursor: pointer;
+      font-family: 'Oswald', sans-serif; font-size: .78rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; transition: all .15s;
+    }
+    .summary-btn.primary { background: var(--navy); color: white; }
+    .summary-btn.primary:hover { background: var(--navy-d); }
+    .summary-btn.secondary { background: white; color: var(--navy); }
+    .summary-btn.secondary:hover { background: var(--cream); }
+    .generate-btn {
+      padding: 12px 28px; background: var(--navy); color: white; border: none; border-radius: 6px;
+      font-family: 'Oswald', sans-serif; font-size: .9rem; font-weight: 500; letter-spacing: .1em;
+      text-transform: uppercase; cursor: pointer; transition: background .15s; margin-top: 10px;
+    }
+    .generate-btn:hover { background: var(--navy-d); }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--sub); display: flex; flex-direction: column; align-items: center; gap: 11px; }
+    .empty-state h3 { font-family: 'Oswald', sans-serif; font-size: 1.05rem; color: var(--slate); font-weight: 500; }
+    .empty-state p  { font-size: .83rem; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--slate); }
+
+    /* RESPONSIVE */
+    @media (max-width: 960px) {
+      .stat-cards { grid-template-columns: 1fr 1fr; }
+      .dash-2col  { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row-3 { grid-template-columns: 1fr 1fr; }
+      .room-entry { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .events-grid { grid-template-columns: 1fr; }
+      .stat-cards { grid-template-columns: 1fr 1fr; }
+      .ministry-grid { grid-template-columns: 1fr 1fr; }
+      .form-row-3 { grid-template-columns: 1fr; }
+      .room-entry { grid-template-columns: 1fr; }
+      .dept-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 500px) {
+      .view-toggle { gap: 2px; }
+      .view-btn { padding: 5px 8px; font-size: .65rem; }
+      .brand h1 { display: none; }
+      .hdr-search { max-width: 140px; }
+      .ministry-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-w"><span>W</span></div>
+      <h1>Ministry Admin</h1>
+    </div>
+    <div class="hdr-divider"></div>
+    <select class="hdr-select" id="ministry-dropdown" onchange="onMinistryDropdown(this.value)">
+      <option value="">Select Ministry</option>
+      <option value="facilities">Facilities</option>
+      <option value="production">Production</option>
+      <option value="comms">Communications</option>
+      <option value="midweek-kids">Midweek Kids</option>
+      <option value="worship">Worship</option>
+    </select>
+    <div class="hdr-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search events..." />
+    </div>
+    <span id="event-count"></span>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Dashboard</button>
+      <button class="view-btn" id="btn-events" onclick="setView('events')">Events</button>
+      <button class="view-btn" id="btn-request" onclick="setView('request')">Request Event</button>
+    </div>
+    <a class="back-link" href="index.html">&larr; Calendar</a>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+    <aside class="sidebar" id="admin-sidebar" style="display:none;">
+      <div class="filter-section">
+        <div class="fs-title">Date Range</div>
+        <div class="date-range">
+          <label>From</label>
+          <input type="date" id="filter-from" />
+          <label>To</label>
+          <input type="date" id="filter-to" />
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Category</div>
+        <div class="cb-group" id="cat-filters"></div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Status</div>
+        <div class="cb-group" id="status-filters"></div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Status Key</div>
+        <div class="legend-grid">
+          <div class="legend-row"><div class="legend-pip" style="background:#22c55e;"></div>Green — Normal</div>
+          <div class="legend-row"><div class="legend-pip" style="background:var(--powder);"></div>Blue — Enhanced</div>
+          <div class="legend-row"><div class="legend-pip" style="background:var(--charcoal);"></div>Black — High Priority</div>
+          <div class="legend-row"><div class="legend-pip" style="background:var(--border);"></div>N/A — Not Involved</div>
+        </div>
+      </div>
+      <button class="reset-btn" onclick="resetFilters()">&#10005; &nbsp;Reset All Filters</button>
+    </aside>
+
+    <main class="main">
+      <div id="loading"><div class="spinner"></div><p style="font-size:.85rem;">Loading calendar data...</p></div>
+      <div id="ministry-select-view" style="display:none;"></div>
+      <div id="admin-dashboard-view" style="display:none;"></div>
+      <div id="admin-events-view" style="display:none;"></div>
+      <div id="admin-request-view" style="display:none;"></div>
+    </main>
+  </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hdr" id="modal-hdr">
+      <div>
+        <div id="modal-cat-tag" style="margin-bottom:6px;"></div>
+        <div class="modal-title" id="modal-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalBtn()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════ */
+const CATEGORIES = {
+  'Sunday Services':       { color: '#003A5D', pattern: /sunday service|watermark en espanol|^wake\b/i },
+  'Kids Ministry':         { color: '#B5712A', pattern: /\bkids\b|preschool|kaleidoscope|\bk1\b|23 kids|45 kids/i },
+  'Ministry Programs':     { color: '#1E5E7A', pattern: /re:generation|re\|engage|legacy \d|great question|frontlines|gather leadership|careers in motion|trail life/i },
+  'Groups & Discipleship': { color: '#2E6B5E', pattern: /small group|discipleship group|community group|asida|multiplying discipleship/i },
+  'Care & Support':        { color: '#7A3E5C', pattern: /support group|care ministry|feeding support|infertility|miscarriage|prenatal/i },
+  'Special Events':        { color: '#8B3A28', pattern: /baptism|holiday|retreat|trip information|young adult trip|pine cove|community group weekend/i },
+  'Administrative':        { color: '#48565A', pattern: /staff prayer|leadership meeting|leadership team|team meeting|square one|staff |connecting team/i },
+};
+
+const DEPT_NAMES = ['Facilities','Production','Comms','Midweek Kids','Worship'];
+const WEEKDAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS     = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const MINISTRY_MAP = {
+  'facilities':   { name: 'Facilities',     key: 'Facilities',    color: '#003A5D', icon: '\u{1F3D7}' },
+  'production':   { name: 'Production',     key: 'Production',    color: '#1E5E7A', icon: '\u{1F3AC}' },
+  'comms':        { name: 'Communications', key: 'Comms',         color: '#B5712A', icon: '\u{1F4E3}' },
+  'midweek-kids': { name: 'Midweek Kids',   key: 'Midweek Kids',  color: '#7A3E5C', icon: '\u{1F9D2}' },
+  'worship':      { name: 'Worship',        key: 'Worship',       color: '#2E6B5E', icon: '\u{1F3B5}' },
+};
+
+const FORM_SECTIONS = [
+  { id: 'basics',       title: 'Event Basics' },
+  { id: 'it-needs',     title: 'IT Needs' },
+  { id: 'facility',     title: 'Facility Needs' },
+  { id: 'kids',         title: 'Kids Ministry' },
+  { id: 'worship',      title: 'Worship' },
+  { id: 'production',   title: 'Production' },
+  { id: 'checkin',      title: 'Check-in' },
+  { id: 'security',     title: 'Security' },
+  { id: 'comms',        title: 'Communications' },
+  { id: 'rooms',        title: 'Room Reservations' },
+  { id: 'room-config',  title: 'Room Configurations' },
+  { id: 'attendance',   title: 'Attendance' },
+  { id: 'financial',    title: 'Financial' },
+  { id: 'registration', title: 'Registration Type' },
+];
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let allEvents      = [];
+let ministryEvents = [];
+let filteredEvents = [];
+let currentMinistry = null;
+let currentView    = 'dashboard';
+let chartInstances = {};
+let activeFilters  = { search:'', categories: new Set(), statuses: new Set(), from: null, to: null };
+let generatedTasks = [];
+let roomEntries    = [{ name:'', date:'', startTime:'', endTime:'' }];
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+function categorizeEvent(name) {
+  for (const [cat, cfg] of Object.entries(CATEGORIES))
+    if (cfg.pattern.test(name)) return cat;
+  return 'Other';
+}
+function catColor(cat) { return (CATEGORIES[cat]||{}).color || '#6B7880'; }
+
+function parseDetails(text) {
+  const depts = {}; DEPT_NAMES.forEach(d => depts[d] = 'N/A');
+  const extra = []; if (!text) return { depts, extra:'' };
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  for (const line of lines) {
+    let matched = false;
+    for (const dept of DEPT_NAMES) {
+      const m = line.match(new RegExp(`^${dept}\\s*[-\u2013]\\s*(.+)`,'i'));
+      if (m) { depts[dept] = normalizeStatus(m[1].trim()); matched = true; break; }
+    }
+    if (!matched) extra.push(line);
+  }
+  return { depts, extra: extra.join(' | ') };
+}
+
+function normalizeStatus(raw) {
+  if (!raw) return 'N/A';
+  const t = raw.trim();
+  if (/^green/i.test(t)) return 'Green';
+  if (/^blue/i.test(t))  return 'Blue';
+  if (/^black/i.test(t)) return 'Black';
+  if (/^n\/?a/i.test(t)) return 'N/A';
+  const first = t.split(/[\s;,(]/)[0];
+  if (/green/i.test(first)) return 'Green';
+  if (/blue/i.test(first))  return 'Blue';
+  if (/black/i.test(first)) return 'Black';
+  return 'N/A';
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const parts = str.split('/'); if (parts.length !== 3) return null;
+  const [m,d,y] = parts.map(Number);
+  return new Date(y, m-1, d);
+}
+
+function fmtTime(t) {
+  if (!t) return '';
+  const [hm, ap] = t.split(' ');
+  const [h, mi] = hm.split(':');
+  let hour = parseInt(h);
+  const ampm = (ap||'').toUpperCase() || (hour>=12?'PM':'AM');
+  if (ampm==='PM' && hour<12) hour+=12;
+  if (ampm==='AM' && hour===12) hour=0;
+  return new Date(2000,0,1,hour,parseInt(mi||0)).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
+
+function fmtDateFull(d) { return d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+function fmtDateKey(d)  { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function statusCls(s)   { return s==='Green'?'green':s==='Blue'?'blue':s==='Black'?'black':'na'; }
+function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ═══════════════════════════════════════════════════
+   LOAD CSV
+═══════════════════════════════════════════════════ */
+async function loadCSV() {
+  const resp = await fetch('calendar.csv');
+  const text = await resp.text();
+  Papa.parse(text, {
+    header: true, skipEmptyLines: true,
+    complete(results) {
+      allEvents = results.data.map((row,i) => {
+        const date = parseDate(row['Start Date']); if (!date) return null;
+        const { depts, extra } = parseDetails(row['Details']);
+        let loc = (row['Location']||'').trim();
+        if (!loc && extra) { const fl=extra.split('|')[0].trim(); if (fl && !DEPT_NAMES.some(d=>fl.includes(d))) loc=fl; }
+        return { id:i, subject:row['Subject']||'', date, startTime:row['Start Time']||'', endTime:row['End Time']||'', allDay:row['All Day Event']==='True', location:loc, depts, category:categorizeEvent(row['Subject']||'') };
+      }).filter(Boolean).sort((a,b)=>a.date-b.date);
+      initMinistry();
+    },
+    error() {
+      document.getElementById('loading').innerHTML = '<p style="color:#dc2626;text-align:center;padding:40px;">Failed to load calendar.csv. Make sure it is in the same folder as admin.html.</p>';
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   MINISTRY INITIALIZATION
+═══════════════════════════════════════════════════ */
+function initMinistry() {
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get('ministry');
+  if (slug && MINISTRY_MAP[slug]) {
+    selectMinistry(slug);
+  } else {
+    showMinistrySelector();
+  }
+}
+
+function selectMinistry(slug) {
+  currentMinistry = slug;
+  const ministry = MINISTRY_MAP[slug];
+  document.getElementById('ministry-dropdown').value = slug;
+  ministryEvents = allEvents.filter(ev => ev.depts[ministry.key] !== 'N/A');
+  const url = new URL(window.location);
+  url.searchParams.set('ministry', slug);
+  history.replaceState({}, '', url);
+  buildCatFilters();
+  buildStatusFilters();
+  generateTasks();
+  applyFilters();
+  document.getElementById('ministry-select-view').style.display = 'none';
+  document.getElementById('admin-sidebar').style.display = '';
+  document.getElementById('loading').style.display = 'none';
+  renderCurrentView();
+}
+
+function showMinistrySelector() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('admin-sidebar').style.display = 'none';
+  document.getElementById('ministry-select-view').style.display = 'block';
+  let html = '<div style="text-align:center;margin-bottom:10px;"><h2 style="font-size:1.3rem;letter-spacing:.1em;text-transform:uppercase;color:var(--charcoal);">Select Your Ministry</h2><p style="color:var(--sub);font-size:.85rem;margin-top:6px;">Choose a ministry to view your dashboard</p></div>';
+  html += '<div class="ministry-grid" id="ministry-grid">';
+  for (const [slug, m] of Object.entries(MINISTRY_MAP)) {
+    const count = allEvents.filter(ev => ev.depts[m.key] !== 'N/A').length;
+    html += `<div class="ministry-card" style="border-top-color:${m.color}" onclick="selectMinistry('${slug}')">
+      <div class="mc-icon">${m.icon}</div>
+      <h3>${esc(m.name)}</h3>
+      <p>${count.toLocaleString()} events</p>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('ministry-select-view').innerHTML = html;
+}
+
+function onMinistryDropdown(val) {
+  if (val && MINISTRY_MAP[val]) selectMinistry(val);
+}
+
+/* ═══════════════════════════════════════════════════
+   TASK GENERATION
+═══════════════════════════════════════════════════ */
+function generateTasks() {
+  generatedTasks = [];
+  if (!currentMinistry) return;
+  const ministry = MINISTRY_MAP[currentMinistry];
+  const deptKey = ministry.key;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+  const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+
+  for (const ev of ministryEvents) {
+    const status = ev.depts[deptKey];
+    if (status === 'Black') {
+      generatedTasks.push({ eventId: ev.id, eventName: ev.subject, eventDate: ev.date, type: 'urgent', priority: 1, label: 'Needs Immediate Attention', description: `${deptKey} status is Black for "${ev.subject}" on ${fmtDateFull(ev.date)}.` });
+    }
+    if (status === 'Blue') {
+      generatedTasks.push({ eventId: ev.id, eventName: ev.subject, eventDate: ev.date, type: 'pending', priority: 2, label: 'In Progress \u2014 Follow Up', description: `${deptKey} status is Blue for "${ev.subject}" on ${fmtDateFull(ev.date)}.` });
+    }
+    if (ev.date >= today && ev.date <= in7) {
+      generatedTasks.push({ eventId: ev.id, eventName: ev.subject, eventDate: ev.date, type: 'upcoming', priority: 3, label: 'Upcoming This Week', description: `"${ev.subject}" is on ${fmtDateFull(ev.date)}. Review preparations.` });
+    }
+  }
+  generatedTasks.sort((a,b) => a.priority !== b.priority ? a.priority - b.priority : a.eventDate - b.eventDate);
+}
+
+/* ═══════════════════════════════════════════════════
+   FILTER UI & LOGIC
+═══════════════════════════════════════════════════ */
+function buildCatFilters() {
+  const cats = [...new Set(ministryEvents.map(e=>e.category))].sort();
+  const el = document.getElementById('cat-filters'); el.innerHTML = '';
+  activeFilters.categories = new Set();
+  for (const cat of cats) {
+    const id = 'cat-'+cat.replace(/\s/g,'-');
+    el.insertAdjacentHTML('beforeend',
+      `<label class="cb-item" for="${id}"><input type="checkbox" id="${id}" value="${esc(cat)}" checked onchange="onCatChange(this)"/><span class="cat-dot" style="background:${catColor(cat)}"></span><span>${esc(cat)}</span></label>`);
+    activeFilters.categories.add(cat);
+  }
+}
+function buildStatusFilters() {
+  const el = document.getElementById('status-filters'); el.innerHTML = '';
+  activeFilters.statuses = new Set();
+  for (const {label,val} of [{label:'Green \u2014 Normal',val:'Green'},{label:'Blue \u2014 Enhanced',val:'Blue'},{label:'Black \u2014 High Priority',val:'Black'}]) {
+    const id='st-'+val;
+    el.insertAdjacentHTML('beforeend',
+      `<label class="cb-item" for="${id}"><input type="checkbox" id="${id}" value="${val}" onchange="onStatusChange(this)"/><span>${label}</span></label>`);
+  }
+}
+
+function applyFilters() {
+  if (!currentMinistry) return;
+  const {search,categories,statuses,from,to} = activeFilters;
+  const deptKey = MINISTRY_MAP[currentMinistry].key;
+  filteredEvents = ministryEvents.filter(ev => {
+    if (search && !ev.subject.toLowerCase().includes(search)) return false;
+    if (categories.size > 0 && !categories.has(ev.category)) return false;
+    if (from && ev.date < from) return false;
+    if (to && ev.date > to) return false;
+    if (statuses.size > 0 && !statuses.has(ev.depts[deptKey])) return false;
+    return true;
+  });
+  document.getElementById('event-count').textContent = filteredEvents.length.toLocaleString() + ' event' + (filteredEvents.length!==1?'s':'');
+}
+
+document.getElementById('search-input').addEventListener('input', e => { activeFilters.search = e.target.value.toLowerCase().trim(); applyFilters(); renderCurrentView(); });
+document.getElementById('filter-from').addEventListener('change', e => { activeFilters.from = e.target.value ? new Date(e.target.value+'T00:00:00') : null; applyFilters(); renderCurrentView(); });
+document.getElementById('filter-to').addEventListener('change', e => { activeFilters.to = e.target.value ? new Date(e.target.value+'T23:59:59') : null; applyFilters(); renderCurrentView(); });
+function onCatChange(cb) { if (cb.checked) activeFilters.categories.add(cb.value); else activeFilters.categories.delete(cb.value); applyFilters(); renderCurrentView(); }
+function onStatusChange(cb) { if (cb.checked) activeFilters.statuses.add(cb.value); else activeFilters.statuses.delete(cb.value); applyFilters(); renderCurrentView(); }
+function resetFilters() {
+  activeFilters = { search:'', categories: new Set(), statuses: new Set(), from:null, to:null };
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-from').value  = '';
+  document.getElementById('filter-to').value    = '';
+  document.querySelectorAll('#cat-filters input').forEach(cb => { cb.checked=true; activeFilters.categories.add(cb.value); });
+  document.querySelectorAll('#status-filters input').forEach(cb => { cb.checked=false; });
+  applyFilters(); renderCurrentView();
+}
+
+/* ═══════════════════════════════════════════════════
+   VIEW CONTROL
+═══════════════════════════════════════════════════ */
+function setView(v) {
+  currentView = v;
+  ['dashboard','events','request'].forEach(x => document.getElementById('btn-'+x).classList.toggle('active', x===v));
+  document.getElementById('admin-sidebar').style.display = (v === 'request' || !currentMinistry) ? 'none' : '';
+  renderCurrentView();
+}
+function renderCurrentView() {
+  ['admin-dashboard-view','admin-events-view','admin-request-view'].forEach(id => document.getElementById(id).style.display='none');
+  if (!currentMinistry) return;
+  if (currentView==='dashboard') { renderDashboard(); document.getElementById('admin-dashboard-view').style.display='flex'; }
+  else if (currentView==='events') { renderEvents(); document.getElementById('admin-events-view').style.display='flex'; }
+  else { renderRequestForm(); document.getElementById('admin-request-view').style.display='block'; }
+}
+
+/* ═══════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════ */
+function renderDashboard() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const next30 = new Date(today); next30.setDate(next30.getDate()+30);
+  const deptKey = MINISTRY_MAP[currentMinistry].key;
+
+  const total = filteredEvents.length;
+  const upcoming = filteredEvents.filter(e => e.date >= today && e.date <= next30).length;
+  const needsAttn = filteredEvents.filter(e => e.depts[deptKey]==='Black').length;
+  const inProgress = filteredEvents.filter(e => e.depts[deptKey]==='Blue').length;
+
+  const catCounts = {};
+  for (const ev of filteredEvents) catCounts[ev.category] = (catCounts[ev.category]||0)+1;
+
+  const monthMap = {};
+  for (const ev of filteredEvents) { const k = `${ev.date.getFullYear()}-${ev.date.getMonth()}`; monthMap[k] = (monthMap[k]||0)+1; }
+  const mLabels=[], mData=[];
+  for (let i=-3; i<=8; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth()+i, 1);
+    mLabels.push(MONTHS[d.getMonth()].slice(0,3)+' \''+String(d.getFullYear()).slice(2));
+    mData.push(monthMap[`${d.getFullYear()}-${d.getMonth()}`]||0);
+  }
+
+  const statusCounts = { Green:0, Blue:0, Black:0 };
+  for (const ev of filteredEvents) { const s = ev.depts[deptKey]; if (statusCounts[s] !== undefined) statusCounts[s]++; }
+
+  const upList = filteredEvents.filter(e=>e.date>=today&&e.date<=next30).slice(0,20);
+  const topTasks = generatedTasks.filter(t => {
+    const ev = allEvents.find(e=>e.id===t.eventId);
+    return ev && filteredEvents.includes(ev);
+  }).slice(0,10);
+
+  const el = document.getElementById('admin-dashboard-view');
+  el.innerHTML = `
+    <div>
+      <div class="dash-row-label">Overview \u2014 ${esc(MINISTRY_MAP[currentMinistry].name)}</div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-label">Total Events</div><div class="stat-val">${total.toLocaleString()}</div><div class="stat-sub">matching filters</div></div>
+        <div class="stat-card c-powder"><div class="stat-label">Next 30 Days</div><div class="stat-val">${upcoming.toLocaleString()}</div><div class="stat-sub">upcoming events</div></div>
+        <div class="stat-card c-alert"><div class="stat-label">Needs Attention</div><div class="stat-val">${needsAttn.toLocaleString()}</div><div class="stat-sub">Black status events</div></div>
+        <div class="stat-card c-slate"><div class="stat-label">In Progress</div><div class="stat-val">${inProgress.toLocaleString()}</div><div class="stat-sub">Blue status events</div></div>
+      </div>
+    </div>
+    <div class="dash-2col">
+      <div class="chart-card"><h3>Events by Category</h3><div class="chart-wrap" style="height:240px;"><canvas id="chart-cat"></canvas></div></div>
+      <div class="chart-card"><h3>Events by Month <span class="chart-sub">\u2014 rolling 12 months</span></h3><div class="chart-wrap" style="height:240px;"><canvas id="chart-month"></canvas></div></div>
+    </div>
+    <div class="dash-2col">
+      <div class="chart-card"><h3>Status Breakdown</h3><div class="chart-wrap" style="height:240px;"><canvas id="chart-status"></canvas></div></div>
+      <div class="chart-card"><h3>Upcoming Events <span class="chart-sub">\u2014 next 30 days</span></h3>
+        <div class="upcoming-list">${upList.length===0?'<p style="color:var(--sub);font-size:.83rem;">No upcoming events.</p>':upList.map(ev=>{
+          const color=catColor(ev.category); const t=ev.allDay?'All Day':(ev.startTime?fmtTime(ev.startTime):'');
+          return `<div class="up-item" style="--cat-color:${color}" onclick="openEvent(${ev.id})"><div class="up-date"><div class="up-mo">${MONTHS[ev.date.getMonth()].slice(0,3)}</div><div class="up-day">${ev.date.getDate()}</div></div><div><div class="up-name">${esc(ev.subject)}</div><div class="up-meta">${esc(t)}${ev.location?' \u00B7 '+esc(ev.location):''}</div></div></div>`;
+        }).join('')}</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Tasks <span class="chart-sub">\u2014 ${generatedTasks.length} total</span></h3>
+      <div class="task-list">${topTasks.length===0?'<p style="color:var(--sub);font-size:.83rem;">No tasks at this time.</p>':topTasks.map(t=>{
+        const bg = {urgent:'var(--alert)',pending:'#1558A0',upcoming:'#B5712A'}[t.type]||'var(--slate)';
+        return `<div class="task-item ${t.type}" onclick="openEvent(${t.eventId})"><div><span class="task-priority" style="background:${bg}">${esc(t.label)}</span></div><div><div class="task-event-name">${esc(t.eventName)}</div><div class="task-meta">${esc(t.description)}</div></div></div>`;
+      }).join('')}</div>
+    </div>`;
+
+  destroyCharts();
+  Chart.defaults.font.family = "'Lato', sans-serif";
+  Chart.defaults.color = '#5A6872';
+
+  const cLabels = Object.keys(catCounts);
+  if (cLabels.length) {
+    chartInstances.cat = new Chart(document.getElementById('chart-cat'), {
+      type:'doughnut', data:{ labels:cLabels, datasets:[{ data:cLabels.map(k=>catCounts[k]), backgroundColor:cLabels.map(catColor), borderWidth:2, borderColor:'white', hoverOffset:8 }] },
+      options:{ cutout:'60%', plugins:{ legend:{position:'right',labels:{boxWidth:11,padding:9,font:{size:11}}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()}`}} } }
+    });
+  }
+  chartInstances.month = new Chart(document.getElementById('chart-month'), {
+    type:'bar', data:{ labels:mLabels, datasets:[{label:'Events',data:mData,backgroundColor:mLabels.map((_,i)=>i===3?'#B9D2DC':'#003A5D'),borderRadius:3,hoverBackgroundColor:'#1E5E7A'}] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{font:{size:10}}}, y:{beginAtZero:true,grid:{color:'#EDEAE5'},ticks:{stepSize:1,font:{size:10}}} } }
+  });
+  chartInstances.status = new Chart(document.getElementById('chart-status'), {
+    type:'doughnut', data:{ labels:['Green','Blue','Black'], datasets:[{data:[statusCounts.Green,statusCounts.Blue,statusCounts.Black],backgroundColor:['#22c55e','#B9D2DC','#1D252C'],borderWidth:2,borderColor:'white',hoverOffset:8}] },
+    options:{ cutout:'60%', plugins:{ legend:{position:'right',labels:{boxWidth:11,padding:9,font:{size:11}}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()}`}} } }
+  });
+}
+
+function destroyCharts() { for (const k of Object.keys(chartInstances)) { chartInstances[k].destroy(); delete chartInstances[k]; } }
+
+/* ═══════════════════════════════════════════════════
+   EVENTS LIST
+═══════════════════════════════════════════════════ */
+function renderEvents() {
+  const el = document.getElementById('admin-events-view');
+  if (!filteredEvents.length) {
+    el.innerHTML = '<div class="empty-state"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#48565A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><h3>No events match your filters</h3><p>Adjust the filters or clear your search.</p></div>';
+    return;
+  }
+  const deptKey = MINISTRY_MAP[currentMinistry].key;
+  const groups = {};
+  for (const ev of filteredEvents) { const k=fmtDateKey(ev.date); if(!groups[k]) groups[k]={date:ev.date,events:[]}; groups[k].events.push(ev); }
+  const todayKey = fmtDateKey(new Date());
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in7 = new Date(today); in7.setDate(in7.getDate()+7);
+  let html = '';
+  for (const k of Object.keys(groups).sort()) {
+    const {date,events} = groups[k];
+    const isTd = k===todayKey;
+    html += `<div><div class="day-hdr"><div class="day-badge${isTd?' is-today':''}">${date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div><div class="day-name">${date.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}${isTd?'<span class="today-chip">Today</span>':''}</div><div class="day-line"></div></div>`;
+    html += '<div class="events-grid">';
+    for (const ev of events) {
+      const color = catColor(ev.category);
+      const status = ev.depts[deptKey];
+      const timeStr = ev.allDay ? 'All Day' : (ev.startTime?fmtTime(ev.startTime):'') + (ev.endTime?' \u2013 '+fmtTime(ev.endTime):'');
+      const sBg = {Green:'#f0fdf4',Blue:'#EBF4FA',Black:'#1D252C'}[status]||'#F2F0EC';
+      const sFg = {Green:'#15803d',Blue:'#1558A0',Black:'white'}[status]||'#5A6872';
+      const sLabel = {Green:'Normal',Blue:'Enhanced',Black:'High Priority'}[status]||'N/A';
+      // Get tasks for this event
+      const evTasks = generatedTasks.filter(t=>t.eventId===ev.id);
+      const taskBadges = evTasks.map(t=>{
+        const bg={urgent:'var(--alert)',pending:'#1558A0',upcoming:'#B5712A'}[t.type]||'var(--slate)';
+        return `<span class="task-badge" style="background:${bg};color:white;">${esc(t.label)}</span>`;
+      }).join('');
+      html += `<div class="event-card" style="--cat-color:${color}" onclick="openEvent(${ev.id})">
+        <div class="ev-top"><div class="ev-title">${esc(ev.subject)}</div><span class="cat-tag" style="background:${color}">${esc(ev.category)}</span></div>
+        ${(timeStr||ev.location)?`<div class="ev-meta">${timeStr?`<div class="meta-row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${esc(timeStr)}</div>`:''}${ev.location?`<div class="meta-row"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(ev.location)}</div>`:''}</div>`:''}
+        <div class="dept-badges"><span class="d-badge" style="background:${sBg};color:${sFg};"><span class="dn">${esc(deptKey)}:</span> ${status} \u2014 ${sLabel}</span></div>
+        ${taskBadges?`<div class="dept-badges" style="margin-top:2px;">${taskBadges}</div>`:''}
+      </div>`;
+    }
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT REQUEST QUESTIONNAIRE
+═══════════════════════════════════════════════════ */
+function renderRequestForm() {
+  const el = document.getElementById('admin-request-view');
+  // Only re-render if empty (preserve form state)
+  if (el.querySelector('.form-section')) return;
+
+  let html = '<div class="form-progress" id="form-progress">';
+  FORM_SECTIONS.forEach((s,i) => { html += `<div class="form-progress-step" data-label="${s.title}" data-idx="${i}" onclick="scrollToSection(${i})"></div>`; });
+  html += '</div>';
+
+  // Section 1: Event Basics
+  html += `<div class="form-section" id="fs-0"><div class="form-section-title"><span class="form-section-num">1</span>Event Basics</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Event Name *</label><input class="form-input" id="f-name" placeholder="Enter event name" /></div>
+    <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="f-category"><option value="">Select category</option>${Object.keys(CATEGORIES).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}<option value="Other">Other</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Event Date *</label><input class="form-input" type="date" id="f-date" /></div>
+    <div class="form-group"><label class="form-label">Location</label><input class="form-input" id="f-location" placeholder="Building, room, etc." /></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Start Time</label><input class="form-input" type="time" id="f-start-time" /></div>
+    <div class="form-group"><label class="form-label">End Time</label><input class="form-input" type="time" id="f-end-time" /></div></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="f-description" placeholder="Describe the event..."></textarea></div>
+    <div class="form-group"><label class="form-label">Recurring Event?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="recurring" value="no" checked onchange="toggleRecurring()" />No</label><label class="form-radio-item"><input type="radio" name="recurring" value="yes" onchange="toggleRecurring()" />Yes</label></div></div>
+    <div class="form-conditional" id="recurring-fields" style="display:none;"><div class="form-row"><div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="f-frequency"><option>Weekly</option><option>Biweekly</option><option>Monthly</option></select></div><div class="form-group"><label class="form-label">End Date</label><input class="form-input" type="date" id="f-recur-end" /></div></div></div>
+  </div>`;
+
+  // Section 2: IT Needs
+  html += `<div class="form-section" id="fs-1"><div class="form-section-title"><span class="form-section-num">2</span>IT Needs</div>
+    <div class="form-group"><label class="form-label">AV Equipment Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="av" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="av" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Equipment (select all that apply)</label><div class="form-cb-group">${['Projector','Microphones','Sound Board','Monitors','Confidence Monitors','Stage Monitors'].map(e=>`<label class="form-cb-item"><input type="checkbox" name="equipment" value="${e}" />${e}</label>`).join('')}</div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Live Streaming?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="streaming" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="streaming" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Recording?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="recording" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="recording" value="yes" />Yes</label></div></div></div>
+    <div class="form-group"><label class="form-label">Special Tech Requirements</label><textarea class="form-textarea" id="f-special-tech" placeholder="Any other tech needs..."></textarea></div>
+  </div>`;
+
+  // Section 3: Facility Needs
+  html += `<div class="form-section" id="fs-2"><div class="form-section-title"><span class="form-section-num">3</span>Facility Needs</div>
+    <div class="form-group"><label class="form-label">Room Setup Required?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="setup" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="setup" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Setup Style</label><select class="form-select" id="f-setup-style"><option value="">Select style</option><option>Theater</option><option>Classroom</option><option>Banquet</option><option>U-Shape</option><option>Boardroom</option><option>Open Floor</option><option>Custom</option></select></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Cleaning Before Event?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="clean-before" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="clean-before" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Cleaning After Event?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="clean-after" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="clean-after" value="yes" />Yes</label></div></div></div>
+    <div class="form-group"><label class="form-label">Parking Arrangements</label><textarea class="form-textarea" id="f-parking" placeholder="Special parking needs..."></textarea></div>
+    <div class="form-group"><label class="form-label">Special Facility Notes</label><textarea class="form-textarea" id="f-facility-notes" placeholder="Additional facility needs..."></textarea></div>
+  </div>`;
+
+  // Section 4: Kids Ministry
+  html += `<div class="form-section" id="fs-3"><div class="form-section-title"><span class="form-section-num">4</span>Kids Ministry</div>
+    <div class="form-group"><label class="form-label">Childcare Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="childcare" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="childcare" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Age Groups (select all that apply)</label><div class="form-cb-group">${['Infants','Toddlers','Preschool','Elementary K-2','Elementary 3-5'].map(a=>`<label class="form-cb-item"><input type="checkbox" name="age-groups" value="${a}" />${a}</label>`).join('')}</div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Expected Number of Kids</label><input class="form-input" type="number" id="f-kids-count" min="0" placeholder="0" /></div>
+    <div class="form-group"><label class="form-label">Volunteers Needed</label><input class="form-input" type="number" id="f-kids-volunteers" min="0" placeholder="0" /></div></div>
+    <div class="form-group"><label class="form-label">Special Kids Ministry Notes</label><textarea class="form-textarea" id="f-kids-notes" placeholder="Additional notes..."></textarea></div>
+  </div>`;
+
+  // Section 5: Worship
+  html += `<div class="form-section" id="fs-4"><div class="form-section-title"><span class="form-section-num">5</span>Worship</div>
+    <div class="form-group"><label class="form-label">Worship Team Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="worship-team" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="worship-team" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Rehearsal Date/Time</label><input class="form-input" type="datetime-local" id="f-rehearsal" /></div>
+    <div class="form-group"><label class="form-label">Special Songs or Sets</label><textarea class="form-textarea" id="f-songs" placeholder="Song list or set details..."></textarea></div>
+    <div class="form-group"><label class="form-label">Additional Worship Notes</label><textarea class="form-textarea" id="f-worship-notes" placeholder="Additional notes..."></textarea></div>
+  </div>`;
+
+  // Section 6: Production
+  html += `<div class="form-section" id="fs-5"><div class="form-section-title"><span class="form-section-num">6</span>Production</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Sound Requirements</label><textarea class="form-textarea" id="f-sound" placeholder="Sound needs..."></textarea></div>
+    <div class="form-group"><label class="form-label">Lighting Requirements</label><textarea class="form-textarea" id="f-lighting" placeholder="Lighting needs..."></textarea></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Video Requirements</label><textarea class="form-textarea" id="f-video" placeholder="Video needs..."></textarea></div>
+    <div class="form-group"><label class="form-label">Stage Setup</label><textarea class="form-textarea" id="f-stage" placeholder="Stage layout..."></textarea></div></div>
+    <div class="form-group"><label class="form-label">Special Production Needs</label><textarea class="form-textarea" id="f-prod-notes" placeholder="Additional production notes..."></textarea></div>
+  </div>`;
+
+  // Section 7: Check-in
+  html += `<div class="form-section" id="fs-6"><div class="form-section-title"><span class="form-section-num">7</span>Check-in</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Check-in Stations Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="checkin-stations" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="checkin-stations" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Number of Stations</label><input class="form-input" type="number" id="f-stations" min="0" placeholder="0" /></div></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Volunteer Greeters Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="greeters" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="greeters" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Number of Greeters</label><input class="form-input" type="number" id="f-greeters" min="0" placeholder="0" /></div></div>
+    <div class="form-group"><label class="form-label">Registration Type</label><select class="form-select" id="f-reg-type"><option value="">Select type</option><option>Pre-registration</option><option>Walk-in</option><option>Both</option></select></div>
+  </div>`;
+
+  // Section 8: Security
+  html += `<div class="form-section" id="fs-7"><div class="form-section-title"><span class="form-section-num">8</span>Security</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Security Team Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="security-team" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="security-team" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Number of Security Personnel</label><input class="form-input" type="number" id="f-security-count" min="0" placeholder="0" /></div></div>
+    <div class="form-group"><label class="form-label">Special Security Concerns</label><textarea class="form-textarea" id="f-security-concerns" placeholder="Any security concerns..."></textarea></div>
+    <div class="form-group"><label class="form-label">Expected Crowd Size</label><input class="form-input" type="number" id="f-crowd-size" min="0" placeholder="0" /></div>
+  </div>`;
+
+  // Section 9: Communications
+  html += `<div class="form-section" id="fs-8"><div class="form-section-title"><span class="form-section-num">9</span>Communications</div>
+    <div class="form-group"><label class="form-label">Marketing Needed?</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="marketing" value="no" checked />No</label><label class="form-radio-item"><input type="radio" name="marketing" value="yes" />Yes</label></div></div>
+    <div class="form-group"><label class="form-label">Announcement Channels (select all that apply)</label><div class="form-cb-group">${['Sunday Announcement','Email Newsletter','Social Media','Website','App Notification','Print Material'].map(c=>`<label class="form-cb-item"><input type="checkbox" name="channels" value="${c}" />${c}</label>`).join('')}</div></div>
+    <div class="form-group"><label class="form-label">Design Needs</label><textarea class="form-textarea" id="f-design-needs" placeholder="Graphics, videos, print materials..."></textarea></div>
+    <div class="form-group"><label class="form-label">Marketing Timeline</label><input class="form-input" id="f-marketing-timeline" placeholder="e.g., Start promotions 4 weeks before" /></div>
+  </div>`;
+
+  // Section 10: Room Reservations
+  html += `<div class="form-section" id="fs-9"><div class="form-section-title"><span class="form-section-num">10</span>Room Reservations</div>
+    <div id="room-entries"></div>
+    <button class="add-room-btn" onclick="addRoom()">+ Add Room</button>
+  </div>`;
+
+  // Section 11: Room Configurations
+  html += `<div class="form-section" id="fs-10"><div class="form-section-title"><span class="form-section-num">11</span>Room Configurations</div>
+    <div class="form-group"><label class="form-label">Setup Style</label><select class="form-select" id="f-config-style"><option value="">Select style</option><option>Theater</option><option>Classroom</option><option>Banquet</option><option>U-Shape</option><option>Boardroom</option><option>Hollow Square</option><option>Custom</option></select></div>
+    <div class="form-group"><label class="form-label">Capacity</label><input class="form-input" type="number" id="f-capacity" min="0" placeholder="0" /></div>
+    <div class="form-group"><label class="form-label">Special Furniture (select all that apply)</label><div class="form-cb-group">${['Podium','Projector Screen','Whiteboard','Easels','Extra Tables','Extra Chairs'].map(f=>`<label class="form-cb-item"><input type="checkbox" name="furniture" value="${f}" />${f}</label>`).join('')}</div></div>
+    <div class="form-group"><label class="form-label">Configuration Notes</label><textarea class="form-textarea" id="f-config-notes" placeholder="Additional setup details..."></textarea></div>
+  </div>`;
+
+  // Section 12: Attendance
+  html += `<div class="form-section" id="fs-11"><div class="form-section-title"><span class="form-section-num">12</span>Attendance</div>
+    <div class="form-group"><label class="form-label">Predicted Attendance</label><input class="form-input" type="number" id="f-attendance" min="0" placeholder="0" /></div>
+    <div class="form-group"><label class="form-label">Historical Comparison Notes</label><textarea class="form-textarea" id="f-historical" placeholder="How does this compare to past events..."></textarea></div>
+    <div class="form-group"><label class="form-label">Capacity Planning Notes</label><textarea class="form-textarea" id="f-cap-planning" placeholder="Overflow plans, seating arrangements..."></textarea></div>
+  </div>`;
+
+  // Section 13: Financial
+  html += `<div class="form-section" id="fs-12"><div class="form-section-title"><span class="form-section-num">13</span>Financial</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Budget Estimate ($)</label><input class="form-input" type="number" id="f-budget" min="0" step="0.01" placeholder="0.00" /></div>
+    <div class="form-group"><label class="form-label">Revenue Projection ($)</label><input class="form-input" type="number" id="f-revenue" min="0" step="0.01" placeholder="0.00" /></div></div>
+    <div class="form-group"><label class="form-label">Expenses Breakdown</label><textarea class="form-textarea" id="f-expenses" placeholder="List major expense items..."></textarea></div>
+  </div>`;
+
+  // Section 14: Registration Type
+  html += `<div class="form-section" id="fs-13"><div class="form-section-title"><span class="form-section-num">14</span>Registration Type</div>
+    <div class="form-group"><label class="form-label">Event Type</label><div class="form-radio-group"><label class="form-radio-item"><input type="radio" name="event-type" value="free" checked onchange="toggleEventType()" />Free Sign-up</label><label class="form-radio-item"><input type="radio" name="event-type" value="paid" onchange="toggleEventType()" />Paid Event</label></div></div>
+    <div class="form-conditional" id="paid-fields" style="display:none;"><div class="form-row"><div class="form-group"><label class="form-label">Ticket Price ($)</label><input class="form-input" type="number" id="f-ticket-price" min="0" step="0.01" placeholder="0.00" /></div><div class="form-group"><label class="form-label">Payment Processing</label><select class="form-select" id="f-payment"><option>Online</option><option>At Door</option><option>Both</option></select></div></div></div>
+    <div class="form-conditional" id="free-fields"><div class="form-group"><label class="form-label">Sign-up Method</label><input class="form-input" id="f-signup-method" placeholder="e.g., Website form, sign-up sheet" /></div></div>
+  </div>`;
+
+  html += '<button class="generate-btn" onclick="generateSummary()">Generate Event Request Summary</button>';
+  html += '<div id="request-summary" style="display:none;"></div>';
+
+  el.innerHTML = html;
+  renderRoomEntries();
+  setupFormProgress();
+}
+
+function toggleRecurring() {
+  const yes = document.querySelector('input[name="recurring"][value="yes"]').checked;
+  document.getElementById('recurring-fields').style.display = yes ? 'block' : 'none';
+}
+function toggleEventType() {
+  const paid = document.querySelector('input[name="event-type"][value="paid"]').checked;
+  document.getElementById('paid-fields').style.display = paid ? 'block' : 'none';
+  document.getElementById('free-fields').style.display = paid ? 'none' : 'block';
+}
+
+function addRoom() { roomEntries.push({name:'',date:'',startTime:'',endTime:''}); renderRoomEntries(); }
+function removeRoom(i) { roomEntries.splice(i,1); if (!roomEntries.length) roomEntries.push({name:'',date:'',startTime:'',endTime:''}); renderRoomEntries(); }
+function renderRoomEntries() {
+  const el = document.getElementById('room-entries'); if (!el) return;
+  el.innerHTML = roomEntries.map((r,i) => `<div class="room-entry">
+    <div class="form-group"><label class="form-label">Room Name</label><input class="form-input" placeholder="Room name/number" value="${esc(r.name)}" onchange="roomEntries[${i}].name=this.value" /></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" value="${r.date}" onchange="roomEntries[${i}].date=this.value" /></div>
+    <div class="form-group"><label class="form-label">Start</label><input class="form-input" type="time" value="${r.startTime}" onchange="roomEntries[${i}].startTime=this.value" /></div>
+    <div class="form-group"><label class="form-label">End</label><input class="form-input" type="time" value="${r.endTime}" onchange="roomEntries[${i}].endTime=this.value" /></div>
+    <button class="remove-room-btn" onclick="removeRoom(${i})" title="Remove">\u2715</button>
+  </div>`).join('');
+}
+
+function setupFormProgress() {
+  const steps = document.querySelectorAll('.form-progress-step');
+  const sections = FORM_SECTIONS.map((_,i) => document.getElementById('fs-'+i));
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const idx = parseInt(entry.target.id.replace('fs-',''));
+        steps.forEach((s,i) => { s.classList.toggle('active', i===idx); s.classList.toggle('complete', i<idx); });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => { if(s) observer.observe(s); });
+}
+function scrollToSection(i) {
+  const s = document.getElementById('fs-'+i);
+  if (s) s.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ═══════════════════════════════════════════════════
+   SUMMARY GENERATION
+═══════════════════════════════════════════════════ */
+function gv(id) { const e=document.getElementById(id); return e?e.value.trim():''; }
+function rv(name) { const r=document.querySelector(`input[name="${name}"]:checked`); return r?r.value:''; }
+function cvs(name) { return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(c=>c.value); }
+
+function generateSummary() {
+  const data = {
+    name: gv('f-name'), date: gv('f-date'), startTime: gv('f-start-time'), endTime: gv('f-end-time'),
+    location: gv('f-location'), category: gv('f-category'), description: gv('f-description'),
+    recurring: rv('recurring'), frequency: gv('f-frequency'), recurEnd: gv('f-recur-end'),
+    av: rv('av'), equipment: cvs('equipment'), streaming: rv('streaming'), recording: rv('recording'), specialTech: gv('f-special-tech'),
+    setupRequired: rv('setup'), setupStyle: gv('f-setup-style'), cleanBefore: rv('clean-before'), cleanAfter: rv('clean-after'), parking: gv('f-parking'), facilityNotes: gv('f-facility-notes'),
+    childcare: rv('childcare'), ageGroups: cvs('age-groups'), kidsCount: gv('f-kids-count'), kidsVolunteers: gv('f-kids-volunteers'), kidsNotes: gv('f-kids-notes'),
+    worshipTeam: rv('worship-team'), rehearsal: gv('f-rehearsal'), songs: gv('f-songs'), worshipNotes: gv('f-worship-notes'),
+    sound: gv('f-sound'), lighting: gv('f-lighting'), video: gv('f-video'), stage: gv('f-stage'), prodNotes: gv('f-prod-notes'),
+    checkinStations: rv('checkin-stations'), stations: gv('f-stations'), greetersNeeded: rv('greeters'), greetersCount: gv('f-greeters'), regType: gv('f-reg-type'),
+    securityTeam: rv('security-team'), securityCount: gv('f-security-count'), securityConcerns: gv('f-security-concerns'), crowdSize: gv('f-crowd-size'),
+    marketing: rv('marketing'), channels: cvs('channels'), designNeeds: gv('f-design-needs'), marketingTimeline: gv('f-marketing-timeline'),
+    rooms: roomEntries.filter(r=>r.name),
+    configStyle: gv('f-config-style'), capacity: gv('f-capacity'), furniture: cvs('furniture'), configNotes: gv('f-config-notes'),
+    attendance: gv('f-attendance'), historical: gv('f-historical'), capPlanning: gv('f-cap-planning'),
+    budget: gv('f-budget'), revenue: gv('f-revenue'), expenses: gv('f-expenses'),
+    eventType: rv('event-type'), ticketPrice: gv('f-ticket-price'), payment: gv('f-payment'), signupMethod: gv('f-signup-method'),
+  };
+
+  function sect(title, rows) {
+    const f = rows.filter(([,v]) => v && v.toString().trim() && v !== 'no' && v !== '0');
+    if (!f.length) return '';
+    return `<div class="summary-section"><div class="summary-section-title">${esc(title)}</div>${f.map(([l,v])=>`<div class="summary-row"><span class="summary-label">${esc(l)}</span><span class="summary-value">${esc(v.toString())}</span></div>`).join('')}</div>`;
+  }
+
+  let html = '<div class="request-summary"><h2 style="font-family:\'Oswald\',sans-serif;font-size:1.1rem;letter-spacing:.07em;text-transform:uppercase;color:var(--charcoal);margin-bottom:18px;border-bottom:3px solid var(--navy);padding-bottom:8px;">Event Request Summary</h2>';
+  html += sect('Event Basics', [['Event Name',data.name],['Date',data.date],['Time',(data.startTime||'')+(data.endTime?' - '+data.endTime:'')],['Location',data.location],['Category',data.category],['Description',data.description],['Recurring',data.recurring==='yes'?`Yes (${data.frequency}, until ${data.recurEnd})`:'']]);
+  html += sect('IT Needs', [['AV Equipment',data.av==='yes'?'Yes':''],['Equipment',data.equipment.join(', ')],['Live Streaming',data.streaming==='yes'?'Yes':''],['Recording',data.recording==='yes'?'Yes':''],['Special Requirements',data.specialTech]]);
+  html += sect('Facility Needs', [['Setup Required',data.setupRequired==='yes'?'Yes':''],['Setup Style',data.setupStyle],['Cleaning Before',data.cleanBefore==='yes'?'Yes':''],['Cleaning After',data.cleanAfter==='yes'?'Yes':''],['Parking',data.parking],['Notes',data.facilityNotes]]);
+  html += sect('Kids Ministry', [['Childcare',data.childcare==='yes'?'Yes':''],['Age Groups',data.ageGroups.join(', ')],['Expected Kids',data.kidsCount],['Volunteers Needed',data.kidsVolunteers],['Notes',data.kidsNotes]]);
+  html += sect('Worship', [['Team Needed',data.worshipTeam==='yes'?'Yes':''],['Rehearsal',data.rehearsal],['Songs/Sets',data.songs],['Notes',data.worshipNotes]]);
+  html += sect('Production', [['Sound',data.sound],['Lighting',data.lighting],['Video',data.video],['Stage Setup',data.stage],['Notes',data.prodNotes]]);
+  html += sect('Check-in', [['Stations Needed',data.checkinStations==='yes'?'Yes':''],['Num Stations',data.stations],['Greeters Needed',data.greetersNeeded==='yes'?'Yes':''],['Num Greeters',data.greetersCount],['Registration Type',data.regType]]);
+  html += sect('Security', [['Team Needed',data.securityTeam==='yes'?'Yes':''],['Personnel',data.securityCount],['Concerns',data.securityConcerns],['Crowd Size',data.crowdSize]]);
+  html += sect('Communications', [['Marketing',data.marketing==='yes'?'Yes':''],['Channels',data.channels.join(', ')],['Design Needs',data.designNeeds],['Timeline',data.marketingTimeline]]);
+  if (data.rooms.length) html += sect('Room Reservations', data.rooms.map((r,i)=>[`Room ${i+1}`,`${r.name} | ${r.date} | ${r.startTime}-${r.endTime}`]));
+  html += sect('Room Configurations', [['Setup Style',data.configStyle],['Capacity',data.capacity],['Furniture',data.furniture.join(', ')],['Notes',data.configNotes]]);
+  html += sect('Attendance', [['Predicted',data.attendance],['Historical Notes',data.historical],['Capacity Planning',data.capPlanning]]);
+  html += sect('Financial', [['Budget',data.budget?'$'+data.budget:''],['Revenue Projection',data.revenue?'$'+data.revenue:''],['Expenses',data.expenses]]);
+  html += sect('Registration', [['Type',data.eventType==='paid'?'Paid Event':'Free Sign-up'],['Ticket Price',data.eventType==='paid'&&data.ticketPrice?'$'+data.ticketPrice:''],['Payment Processing',data.eventType==='paid'?data.payment:''],['Sign-up Method',data.eventType==='free'?data.signupMethod:'']]);
+
+  html += `<div class="summary-actions">
+    <button class="summary-btn primary" onclick="printSummary()">Print</button>
+    <button class="summary-btn secondary" onclick="copySummary()">Copy to Clipboard</button>
+    <button class="summary-btn secondary" onclick="downloadSummary()">Download as Text</button>
+  </div></div>`;
+
+  const el = document.getElementById('request-summary');
+  el.innerHTML = html;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior:'smooth' });
+}
+
+function printSummary() {
+  const content = document.querySelector('.request-summary');
+  const win = window.open('','_blank');
+  win.document.write(`<html><head><title>Event Request</title><style>body{font-family:sans-serif;padding:40px;max-width:700px;margin:0 auto;}h2{font-size:1.2rem;border-bottom:2px solid #003A5D;padding-bottom:8px;}.summary-section{margin-bottom:16px;}.summary-section-title{font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:#48565A;margin-bottom:6px;border-bottom:1px solid #ddd;padding-bottom:4px;}.summary-row{display:flex;gap:8px;font-size:.85rem;padding:3px 0;}.summary-label{font-weight:700;color:#5A6872;min-width:160px;}.summary-actions{display:none;}</style></head><body>${content.innerHTML}</body></html>`);
+  win.document.close();
+  win.print();
+}
+
+function copySummary() {
+  const text = buildPlainTextSummary();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.summary-btn.secondary');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function downloadSummary() {
+  const text = buildPlainTextSummary();
+  const name = gv('f-name') || 'untitled';
+  const blob = new Blob([text], { type:'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `event-request-${name.replace(/\s+/g,'-').toLowerCase()}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function buildPlainTextSummary() {
+  let t = '=== EVENT REQUEST SUMMARY ===\n';
+  t += `Generated: ${new Date().toLocaleDateString()}\n`;
+  t += `Ministry: ${currentMinistry ? MINISTRY_MAP[currentMinistry].name : 'N/A'}\n\n`;
+  const sections = document.querySelectorAll('.request-summary .summary-section');
+  sections.forEach(s => {
+    const title = s.querySelector('.summary-section-title');
+    if (title) t += `--- ${title.textContent} ---\n`;
+    s.querySelectorAll('.summary-row').forEach(r => {
+      const label = r.querySelector('.summary-label');
+      const value = r.querySelector('.summary-value');
+      if (label && value) t += `${label.textContent}: ${value.textContent}\n`;
+    });
+    t += '\n';
+  });
+  return t;
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT DETAIL MODAL
+═══════════════════════════════════════════════════ */
+function openEvent(id) {
+  const ev = allEvents.find(e=>e.id===id); if (!ev) return;
+  const color = catColor(ev.category);
+  document.getElementById('modal').style.setProperty('--cat-color', color);
+  document.getElementById('modal-cat-tag').innerHTML = `<span class="cat-tag" style="background:${color}">${esc(ev.category)}</span>`;
+  document.getElementById('modal-title').textContent = ev.subject;
+  const timeStr = ev.allDay ? 'All Day' : (ev.startTime?fmtTime(ev.startTime):'') + (ev.endTime?' \u2013 '+fmtTime(ev.endTime):'');
+  let body = `<div><div class="ms-title">Date &amp; Time</div><div class="mi-row"><svg class="mi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div>${esc(fmtDateFull(ev.date))}${timeStr?' &nbsp;\u00B7&nbsp; '+esc(timeStr):''}</div></div></div>`;
+  if (ev.location) body += `<div><div class="ms-title">Location</div><div class="mi-row"><svg class="mi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div>${esc(ev.location)}</div></div></div>`;
+  body += `<div><div class="ms-title">Department Status</div><div class="dept-grid">${DEPT_NAMES.map(dept=>{
+    const s=ev.depts[dept]||'N/A', cls=statusCls(s);
+    const lbl={Green:'Normal',Blue:'Enhanced',Black:'High Priority'}[s]||'Not Involved';
+    return `<div class="dept-card ${cls}"><div class="dept-card-name">${dept}</div><div class="dept-card-status">${s} <span style="font-weight:400;font-size:.72rem;opacity:.6;">\u2014 ${lbl}</span></div></div>`;
+  }).join('')}</div></div>`;
+
+  // Show tasks for this event
+  const evTasks = generatedTasks.filter(t=>t.eventId===id);
+  if (evTasks.length) {
+    body += `<div><div class="ms-title">Tasks</div><div class="task-list" style="max-height:none;">${evTasks.map(t=>{
+      const bg={urgent:'var(--alert)',pending:'#1558A0',upcoming:'#B5712A'}[t.type]||'var(--slate)';
+      return `<div class="task-item ${t.type}"><div><span class="task-priority" style="background:${bg}">${esc(t.label)}</span></div><div><div class="task-meta">${esc(t.description)}</div></div></div>`;
+    }).join('')}</div></div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) { if (e.target===document.getElementById('modal-overlay')) closeModalBtn(); }
+function closeModalBtn() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModalBtn(); });
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+loadCSV();
+</script>
+</body>
+</html>
