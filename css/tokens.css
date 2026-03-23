@@ -1,0 +1,25 @@
+/* ══════════════════════════════════════════════════════════
+   DESIGN TOKENS — Watermark Church Calendar Suite
+   ──────────────────────────────────────────────────────────
+   Surface variables give every page automatic dark-mode
+   support without per-element overrides:
+
+     --surface-1   cards, modals, dropdowns, panels
+     --surface-2   page bg, sidebar, subtle fills
+     --surface-3   inputs, alternate rows, inset areas
+
+   Usage in CSS:   background: var(--surface-1);
+   Usage in JS:    style="background:var(--surface-1)"
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  --surface-1: #FFFFFF;
+  --surface-2: #F2F0EC;   /* warm cream — rooms overrides to #FAF8F4 */
+  --surface-3: #E5E1DB;   /* slightly darker fill */
+}
+
+[data-theme="dark"] {
+  --surface-1: #1E2840;
+  --surface-2: #161C28;
+  --surface-3: #131824;
+}
