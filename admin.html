@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ministry Admin — Watermark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<script src="js/nav.js"></script>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand" onclick="toggleDrop(this)">
+      <div class="brand-w"><span>W</span></div>
+      <h1>Ministry Admin</h1>
+      <span class="app-chevron">▾</span>
+      <div class="app-drop">
+        <a class="app-drop-item" href="index.html"><span class="app-drop-icon">📅</span> Calendar</a>
+        <a class="app-drop-item current" href="admin.html"><span class="app-drop-icon">⚙️</span> Ministry Admin<span class="app-drop-check">✓</span></a>
+        <a class="app-drop-item" href="budget.html"><span class="app-drop-icon">💰</span> Budget Planner</a>
+        <a class="app-drop-item" href="rooms.html"><span class="app-drop-icon">🏢</span> Room Planner</a>
+        <a class="app-drop-item" href="event-request.html"><span class="app-drop-icon">📋</span> Event Request</a>
+      </div>
+    </div>
+    <div class="hdr-divider"></div>
+    <select class="hdr-select" id="category-dropdown" onchange="onCategoryDropdown(this.value)">
+      <option value="">Select Ministry</option>
+    </select>
+    <div class="hdr-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search events..." />
+    </div>
+    <span id="event-count"></span>
+    <button class="mobile-filter-btn" onclick="toggleMobileSidebar()">☰ Filters</button>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Dashboard</button>
+      <button class="view-btn" id="btn-tasks" onclick="setView('tasks')">Tasks</button>
+      <button class="view-btn" id="btn-events" onclick="setView('events')">Events</button>
+      <a class="view-btn" href="event-request.html" style="text-decoration:none;display:inline-flex;align-items:center;">Request Event</a>
+    </div>
+    <button id="theme-toggle" class="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+    <aside class="sidebar" id="admin-sidebar" style="display:none;">
+      <div class="filter-section">
+        <div class="fs-title">Date Range</div>
+        <div class="date-range">
+          <label>From</label>
+          <input type="date" id="filter-from" />
+          <label>To</label>
+          <input type="date" id="filter-to" />
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Support Levels</div>
+        <div class="cb-group" id="dept-filters"></div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Status</div>
+        <div class="cb-group" id="status-filters"></div>
+      </div>
+      <div class="filter-section">
+        <div class="fs-title">Status Key</div>
+        <div class="legend-grid">
+          <div class="legend-row"><div class="legend-pip" style="background:#22c55e;"></div>Green</div>
+          <div class="legend-row"><div class="legend-pip" style="background:var(--powder);"></div>Blue</div>
+          <div class="legend-row"><div class="legend-pip" style="background:var(--charcoal);"></div>Black</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#7b1c1c;"></div>Double Black</div>
+        </div>
+      </div>
+      <button class="reset-btn" onclick="resetFilters()">&#10005; &nbsp;Reset All Filters</button>
+    </aside>
+
+    <main class="main">
+      <div id="loading"><div class="spinner"></div><p style="font-size:.85rem;">Loading calendar data...</p></div>
+      <div id="category-select-view" style="display:none;"></div>
+      <div id="admin-dashboard-view" style="display:none;"></div>
+      <div id="admin-events-view" style="display:none;"></div>
+      <div id="admin-request-view" style="display:none;"></div>
+      <div id="admin-tasks-view" style="display:none;"></div>
+    </main>
+  </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-hdr" id="modal-hdr">
+      <div>
+        <div id="modal-cat-tag" style="margin-bottom:6px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="modal-title" id="modal-title"></div>
+          <span id="modal-series" style="display:none;font-size:.62rem;font-weight:700;background:#E5E1DB;color:var(--slate);padding:3px 8px;border-radius:10px;letter-spacing:.04em;white-space:nowrap;"></span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModalBtn()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Task Detail Side Panel -->
+<div class="task-detail-overlay" id="task-detail-overlay" onclick="closeTaskDetail()"></div>
+<div class="task-detail-panel" id="task-detail-panel">
+  <div id="task-detail-content"></div>
+</div>
+
+<script src="js/shell.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
