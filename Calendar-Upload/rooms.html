@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Planner — Watermark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/rooms.css?v=4">
+</head>
+<body>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js?v=4"></script>
+<script src="js/roles.js?v=2"></script>
+<!-- ══ Header ══ -->
+<div class="hdr">
+  <div class="brand" id="brand-btn" onclick="toggleDrop(this)">
+    <div class="brand-w"><span>W</span></div>
+    <h1>Room Planner</h1>
+    <span class="app-chevron">▾</span>
+    <div class="app-drop">
+      <a class="app-drop-item" href="index.html"><span class="app-drop-icon">📅</span> Calendar</a>
+      <a class="app-drop-item" href="admin.html"><span class="app-drop-icon">⚙️</span> Ministry Admin</a>
+      <a class="app-drop-item" href="budget.html"><span class="app-drop-icon">💰</span> Budget Planner</a>
+      <a class="app-drop-item current" href="rooms.html"><span class="app-drop-icon">🏢</span> Room Planner<span class="app-drop-check">✓</span></a>
+      <a class="app-drop-item" href="event-request.html"><span class="app-drop-icon">📋</span> Event Request</a>
+    </div>
+  </div>
+  <div class="hdr-divider"></div>
+  <span class="hdr-title" id="hdr-date-lbl"></span>
+  <button id="theme-toggle" class="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+</div>
+
+<!-- ══ Controls bar ══ -->
+<div class="ctrl-bar">
+  <div class="day-nav">
+    <button class="nav-btn" onclick="dayNav(-1)" title="Previous day">‹</button>
+    <input type="date" class="date-input" id="date-pick" onchange="setDate(this.value)">
+    <button class="nav-btn" onclick="dayNav(1)" title="Next day">›</button>
+    <button class="today-btn" onclick="goToday()">Today</button>
+  </div>
+  <div class="ctrl-sep"></div>
+  <div class="bldg-tabs" id="bldg-tabs">
+    <button class="bldg-tab active" data-bldg="" onclick="setBldg(this,'')">All</button>
+    <button class="bldg-tab" data-bldg="East Tower" onclick="setBldg(this,'East Tower')">East Tower</button>
+    <button class="bldg-tab" data-bldg="West Tower" onclick="setBldg(this,'West Tower')">West Tower</button>
+    <button class="bldg-tab" data-bldg="Kids Building" onclick="setBldg(this,'Kids Building')">Kids Building</button>
+    <button class="bldg-tab" data-bldg="Town Center" onclick="setBldg(this,'Town Center')">Town Center</button>
+  </div>
+  <div class="ctrl-right">
+    <button class="icon-btn" id="dash-btn" onclick="toggleDashboard()">📊 Dashboard</button>
+    <button class="icon-btn" id="util-btn" onclick="toggleUtilization()">📊 Utilization</button>
+    <a class="icon-btn" href="security.html">🔒 Security</a>
+    <button class="icon-btn" id="closures-btn" onclick="openClosuresPanel()" data-requires="admin">🚫 Closures</button>
+    <button class="icon-btn" onclick="openRoomsModal()" data-requires="admin">⚙ Edit Rooms</button>
+    <button class="icon-btn pri" onclick="openAddPanel()" data-requires="staff">＋ Add Reservation</button>
+  </div>
+</div>
+
+<!-- ══ Pending requests banner ══ -->
+<div id="pending-rooms-banner" style="display:none"></div>
+
+<!-- ══ Planner shell ══ -->
+<div class="planner-shell">
+  <div id="util-panel" style="display:none" class="util-panel"></div>
+  <div id="security-panel" class="security-panel" style="display:none"></div>
+  <div class="gantt-outer" id="gantt-outer">
+    <!-- built by buildGantt() -->
+  </div>
+  <div class="dashboard-view hidden" id="dashboard-view">
+    <!-- built by buildDashboard() -->
+  </div>
+  <div class="legend-bar" id="legend-bar"></div>
+</div>
+
+<!-- ══ Block popup ══ -->
+<div class="block-popup hidden" id="block-popup">
+  <button class="popup-close" onclick="closePopup()">✕</button>
+  <div class="popup-title" id="pp-title"></div>
+  <div><span class="popup-badge" id="pp-badge"></span></div>
+  <div class="popup-time" id="pp-time"></div>
+  <div class="popup-room" id="pp-room"></div>
+  <div id="pp-link-wrap"></div>
+</div>
+
+<!-- ══ Add/Edit Reservation Panel ══ -->
+<div class="rsv-overlay" id="rsv-overlay" onclick="closeAddPanel()"></div>
+<div class="rsv-panel" id="rsv-panel">
+  <div class="rsv-panel-hdr">
+    <span class="rsv-panel-title">Add Reservation</span>
+    <button class="rsv-panel-close" onclick="closeAddPanel()">✕</button>
+  </div>
+  <div class="rsv-panel-body">
+    <label class="form-lbl">Room</label>
+    <select class="form-sel" id="rsv-room"></select>
+
+    <label class="form-lbl">Link to Calendar Event (optional)</label>
+    <div class="ev-search-wrap">
+      <input class="form-inp" id="rsv-ev-search" type="text"
+        placeholder="Search event name…" autocomplete="off"
+        oninput="filterEvSearch(this.value)"
+        onfocus="filterEvSearch(this.value)"
+        onblur="setTimeout(closeEvDropdown,150)">
+      <div class="ev-dropdown" id="rsv-ev-dropdown"></div>
+    </div>
+    <input type="hidden" id="rsv-ev-link">
+
+    <label class="form-lbl">Event Name</label>
+    <input class="form-inp" id="rsv-subject" type="text" placeholder="e.g. Sunday Morning Service">
+
+    <label class="form-lbl">Ministry</label>
+    <select class="form-sel" id="rsv-ministry">
+      <option value="">— select —</option>
+      <option>Sunday Services</option>
+      <option>Kids Team</option>
+      <option>Equipping Team</option>
+      <option>Care Team</option>
+      <option>Special Events</option>
+      <option>Leadership Team</option>
+      <option>Missions & Outreach</option>
+      <option>Students &amp; College</option>
+      <option>Operations Team</option>
+      <option>Marriage Team</option>
+      <option>Young Adults</option>
+      <option>Community &amp; Connecting</option>
+      <option>Ministry Programs</option>
+      <option>Institute Team</option>
+      <option>Watermark en Espanol</option>
+      <option>Health &amp; CDC</option>
+      <option>Family Team</option>
+    </select>
+
+    <label class="form-lbl">Date</label>
+    <input class="form-inp" id="rsv-date" type="date">
+
+    <div class="form-row">
+      <div>
+        <label class="form-lbl">Start Time</label>
+        <input class="form-inp" id="rsv-start" type="time" value="09:00">
+      </div>
+      <div>
+        <label class="form-lbl">End Time</label>
+        <input class="form-inp" id="rsv-end" type="time" value="11:00">
+      </div>
+    </div>
+
+    <div class="form-divider"></div>
+
+    <!-- Setup -->
+    <div class="setup-td-section">
+      <div class="setup-td-hdr">
+        <span class="setup-td-title">Setup</span>
+        <label class="setup-td-toggle">
+          <input type="checkbox" id="rsv-has-setup" onchange="toggleSetupFields()">
+          <span>Needed</span>
+        </label>
+      </div>
+      <div id="setup-fields" class="setup-td-body" style="display:none">
+        <div class="form-row">
+          <div>
+            <label class="form-lbl">Minutes Before</label>
+            <input class="form-inp" id="rsv-setup-mins" type="number" min="5" step="5" value="30">
+          </div>
+          <div>
+            <label class="form-lbl">Done By</label>
+            <select class="form-sel" id="rsv-setup-type" onchange="toggleSetupVolunteers()">
+              <option value="staff">Staff</option>
+              <option value="volunteer">Volunteer</option>
+            </select>
+          </div>
+        </div>
+        <div id="setup-vol-wrap" style="display:none">
+          <label class="form-lbl">Volunteer Names</label>
+          <textarea class="form-inp form-ta" id="rsv-setup-volunteers" rows="2" placeholder="e.g. John Smith, Jane Doe"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teardown -->
+    <div class="setup-td-section">
+      <div class="setup-td-hdr">
+        <span class="setup-td-title">Teardown</span>
+        <label class="setup-td-toggle">
+          <input type="checkbox" id="rsv-has-teardown" onchange="toggleTeardownFields()">
+          <span>Needed</span>
+        </label>
+      </div>
+      <div id="teardown-fields" class="setup-td-body" style="display:none">
+        <div class="form-row">
+          <div>
+            <label class="form-lbl">Minutes After</label>
+            <input class="form-inp" id="rsv-teardown-mins" type="number" min="5" step="5" value="30">
+          </div>
+          <div>
+            <label class="form-lbl">Done By</label>
+            <select class="form-sel" id="rsv-teardown-type" onchange="toggleTeardownVolunteers()">
+              <option value="staff">Staff</option>
+              <option value="volunteer">Volunteer</option>
+            </select>
+          </div>
+        </div>
+        <div id="teardown-vol-wrap" style="display:none">
+          <label class="form-lbl">Volunteer Names</label>
+          <textarea class="form-inp form-ta" id="rsv-teardown-volunteers" rows="2" placeholder="e.g. John Smith, Jane Doe"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <label class="form-lbl">Staff Contact (Requested By)</label>
+    <input class="form-inp" id="rsv-requested-by" type="text" placeholder="e.g. Mike Johnson">
+
+    <label class="form-lbl" style="margin-top:10px;">Security Notes <span style="font-size:.6rem;color:var(--sub);font-weight:400;">(optional — special instructions for security team)</span></label>
+    <textarea class="form-inp form-ta" id="rsv-security-notes" rows="2" placeholder="e.g. Volunteers enter through side door, lock by 11pm"></textarea>
+  </div>
+  <div class="rsv-panel-foot">
+    <button class="btn sec" onclick="closeAddPanel()">Cancel</button>
+    <button class="btn pri" onclick="saveReservation()" data-requires="staff">Save Reservation</button>
+  </div>
+</div>
+
+<!-- ══ Campus Closures Panel ══ -->
+<div class="rsv-overlay" id="closures-overlay" onclick="closeClosuresPanel()"></div>
+<div class="rsv-panel" id="closures-panel">
+  <div class="rsv-panel-hdr">
+    <span class="rsv-panel-title">🚫 Campus Closures</span>
+    <button class="rsv-panel-close" onclick="closeClosuresPanel()">✕</button>
+  </div>
+  <div class="rsv-panel-body">
+    <p class="closures-intro">Block dates for holidays, staff events, or maintenance. Reservations cannot be made on closed dates without a warning.</p>
+
+    <div id="closures-list" class="closures-list"></div>
+
+    <div class="closures-form-hdr">Add New Closure</div>
+
+    <label class="form-lbl">Closure Name</label>
+    <input class="form-inp" id="cl-name" type="text" placeholder="e.g. Christmas Holiday, Staff Retreat">
+
+    <label class="form-lbl">Type</label>
+    <select class="form-sel" id="cl-type">
+      <option value="holiday">🏖️ Holiday</option>
+      <option value="staff-event">👥 Staff Event</option>
+      <option value="maintenance">🔧 Maintenance</option>
+      <option value="other">📋 Other</option>
+    </select>
+
+    <div class="form-row">
+      <div>
+        <label class="form-lbl">Start Date</label>
+        <input class="form-inp" id="cl-start" type="date">
+      </div>
+      <div>
+        <label class="form-lbl">End Date</label>
+        <input class="form-inp" id="cl-end" type="date" placeholder="Same as start if single day">
+      </div>
+    </div>
+
+    <label class="form-lbl">Affects Buildings</label>
+    <div class="cl-bldg-grid">
+      <label class="cl-bldg-opt"><input type="checkbox" class="cl-bldg-check" value="East Tower"> East Tower</label>
+      <label class="cl-bldg-opt"><input type="checkbox" class="cl-bldg-check" value="West Tower"> West Tower</label>
+      <label class="cl-bldg-opt"><input type="checkbox" class="cl-bldg-check" value="Kids Building"> Kids Building</label>
+      <label class="cl-bldg-opt"><input type="checkbox" class="cl-bldg-check" value="Town Center"> Town Center</label>
+    </div>
+    <p class="closures-bldg-note">Leave all unchecked to close all buildings.</p>
+
+    <label class="form-lbl">Note <span style="font-size:.6rem;color:var(--sub);font-weight:400;">(optional)</span></label>
+    <textarea class="form-inp form-ta" id="cl-note" rows="2" placeholder="e.g. Office and all campus spaces closed for the holiday."></textarea>
+  </div>
+  <div class="rsv-panel-foot">
+    <button class="btn sec" onclick="closeClosuresPanel()">Cancel</button>
+    <button class="btn pri" onclick="saveNewClosure()">Save Closure</button>
+  </div>
+</div>
+
+<!-- ══ Edit Rooms Modal ══ -->
+<div class="modal-overlay hidden" id="rooms-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">⚙ Edit Rooms</span>
+      <button class="modal-close" onclick="closeRoomsModal()">✕</button>
+    </div>
+    <div class="modal-body" id="rooms-modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn sec" onclick="resetRooms()" style="flex:none;padding:8px 14px;font-size:.72rem;" data-requires="admin">↺ Reset to Default</button>
+      <button class="btn sec" onclick="closeRoomsModal()" style="flex:none;">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/shell.js?v=2"></script>
+<script src="js/room-seed.js?v=1"></script>
+<script src="js/rooms.js?v=8"></script>
+</body>
+</html>

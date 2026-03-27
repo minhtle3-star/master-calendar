@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Admin — Watermark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/user-admin.css">
+</head>
+<body>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js?v=4"></script>
+<script src="js/roles.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
+
+<!-- ══ Header ══ -->
+<div class="hdr">
+  <div class="brand" id="brand-btn" onclick="toggleDrop(this)">
+    <div class="brand-w"><span>W</span></div>
+    <h1>User Admin</h1>
+    <span class="app-chevron">▾</span>
+    <div class="app-drop">
+      <a class="app-drop-item" href="index.html"><span class="app-drop-icon">📅</span> Calendar</a>
+      <a class="app-drop-item" href="admin.html"><span class="app-drop-icon">⚙️</span> Ministry Admin</a>
+      <a class="app-drop-item" href="budget.html"><span class="app-drop-icon">💰</span> Budget Planner</a>
+      <a class="app-drop-item" href="rooms.html"><span class="app-drop-icon">🏢</span> Room Planner</a>
+      <a class="app-drop-item" href="event-request.html"><span class="app-drop-icon">📋</span> Event Request</a>
+      <a class="app-drop-item current" href="user-admin.html"><span class="app-drop-icon">👥</span> User Admin<span class="app-drop-check">✓</span></a>
+    </div>
+  </div>
+  <div class="hdr-divider"></div>
+  <span class="hdr-title" id="hdr-date-lbl">Users &amp; Groups</span>
+  <button id="theme-toggle" class="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+</div>
+
+<!-- ══ Tab Bar ══ -->
+<div class="ua-tabbar">
+  <button class="ua-tab active" data-tab="users" onclick="setTab('users')">👥 Users</button>
+  <button class="ua-tab" data-tab="groups" onclick="setTab('groups')">🏷 Groups</button>
+  <div class="ua-tab-spacer"></div>
+  <button class="ua-tab-action" id="ua-add-btn" onclick="handleAddBtn()">＋ Add User</button>
+</div>
+
+<!-- ══ Content ══ -->
+<div class="ua-content" id="ua-content"></div>
+
+<!-- ══ Add / Edit Modal ══ -->
+<div class="ua-modal-overlay hidden" id="ua-modal">
+  <div class="ua-modal">
+    <div class="ua-modal-hdr">
+      <span class="ua-modal-title" id="ua-modal-title">Add User</span>
+      <button class="ua-modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="ua-modal-body" id="ua-modal-body"></div>
+    <div class="ua-modal-foot" id="ua-modal-foot"></div>
+  </div>
+</div>
+
+<script src="js/user-admin.js"></script>
+<script>
+function handleAddBtn() {
+  if (_currentTab === 'users') openAddUser();
+  else openAddGroup();
+}
+</script>
+</body>
+</html>

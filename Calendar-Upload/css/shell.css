@@ -1,0 +1,412 @@
+/* ══════════════════════════════════════════════════════════
+   SHELL — shared header chrome, app switcher, theme toggle
+   Covers: .header, .hdr, .brand*, .app-drop*, .theme-btn
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Page transition animations ── */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pageExit {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+.app {
+  opacity: 0;
+  transform: translateY(10px);
+  /* Transition fires when .ready is added — more reliable than fill-mode animations */
+  transition: opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app.ready {
+  opacity: 1;
+  transform: translateY(0);
+}
+.app.page-exit {
+  animation: pageExit 0.16s ease-in forwards;
+  pointer-events: none;
+}
+
+/* ── Base header (index / admin / budget use .header) ── */
+.header {
+  background: #0d1a2e;
+  color: white; padding: 0 20px; height: 64px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.35);
+  position: sticky; top: 0; z-index: 50; flex-shrink: 0;
+}
+
+/* ── Base header (rooms uses .hdr) ── */
+.hdr {
+  background: var(--navy);
+  color: white; height: 54px; padding: 0 20px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.35);
+  position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+}
+
+/* ── Brand switcher wrapper ── */
+.brand {
+  display: flex; align-items: center; gap: 11px;
+  flex-shrink: 0; cursor: pointer; position: relative; user-select: none;
+}
+
+/* ── W logo mark (white box / navy W — rooms overrides with gold) ── */
+.brand-w {
+  width: 34px; height: 34px; background: white; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.brand-w span {
+  font-family: 'Oswald', sans-serif; font-weight: 700;
+  font-size: 1.05rem; color: var(--navy); letter-spacing: -.02em;
+}
+
+/* ── App name h1 ── */
+.brand h1 {
+  font-family: 'Oswald', sans-serif; font-weight: 400;
+  font-size: 1rem; letter-spacing: .14em; text-transform: uppercase;
+  color: white; white-space: nowrap;
+}
+
+/* ── Dropdown chevron ── */
+.app-chevron {
+  font-size: .55rem; color: rgba(255,255,255,.45);
+  margin-left: -6px; transition: transform .2s; line-height: 1;
+}
+.brand.open .app-chevron { transform: rotate(180deg); }
+
+/* ── App-switcher dropdown ── */
+.app-drop {
+  position: absolute; top: calc(100% + 12px); left: 0;
+  background: var(--surface-1);
+  border-radius: 9px; box-shadow: 0 6px 24px rgba(0,0,0,.16);
+  min-width: 190px; z-index: 999; overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transform: translateY(-6px); transition: opacity .15s, transform .15s;
+}
+.brand.open .app-drop { opacity: 1; pointer-events: all; transform: translateY(0); }
+.app-drop-item {
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+  text-decoration: none; font-family: 'Lato', sans-serif;
+  font-size: .85rem; color: var(--charcoal); transition: background .12s;
+}
+.app-drop-item:hover { background: var(--surface-2); }
+.app-drop-item.current { font-weight: 700; color: var(--navy); }
+.app-drop-icon { font-size: .95rem; width: 20px; text-align: center; }
+.app-drop-check { margin-left: auto; color: var(--navy); font-size: .75rem; }
+
+/* ── Shared header divider ── */
+.hdr-divider { width: 1px; height: 26px; background: rgba(255,255,255,.18); flex-shrink: 0; }
+
+/* ── Theme toggle button ── */
+.theme-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.1rem; line-height: 1; padding: 4px 7px;
+  border-radius: 6px; opacity: .8; transition: opacity .15s;
+}
+.theme-btn:hover { opacity: 1; }
+
+/* ══ Persistent left sidebar nav ══════════════════════════════════════ */
+:root { --nav-w: 210px; --nav-w-sm: 60px; }
+
+body { padding-left: var(--nav-w); transition: padding-left .2s; }
+body.nav-collapsed { padding-left: var(--nav-w-sm); }
+
+.side-nav {
+  position: fixed; left: 0; top: 0; height: 100vh; width: var(--nav-w);
+  background: var(--surface-1);
+  display: flex; flex-direction: column;
+  z-index: 400; transition: width .2s; overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.side-nav.collapsed { width: var(--nav-w-sm); }
+
+/* ── Logo / brand row ── */
+.side-nav-logo {
+  display: flex; align-items: center; gap: 11px; padding: 16px 14px 14px;
+  text-decoration: none; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sn-brand-w {
+  width: 32px; height: 32px; background: #003A5D; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,58,93,.25);
+}
+.sn-brand-w span {
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1rem; color: white;
+}
+.side-nav-logo-label {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--charcoal);
+  white-space: nowrap; transition: opacity .15s;
+}
+.side-nav.collapsed .side-nav-logo-label { opacity: 0; pointer-events: none; }
+
+/* ── Nav items ── */
+.side-nav-items {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 10px 8px 6px; gap: 1px; overflow-y: auto;
+}
+
+.side-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 7px;
+  text-decoration: none; color: var(--sub);
+  font-size: .82rem; font-family: 'Lato', sans-serif; font-weight: 600;
+  transition: background .15s, color .15s; position: relative; white-space: nowrap;
+  letter-spacing: .01em;
+}
+.side-nav-item:hover {
+  background: var(--surface-2);
+  color: var(--charcoal);
+}
+.side-nav-item.active {
+  background: var(--surface-2);
+  color: var(--navy);
+  box-shadow: inset 3px 0 0 var(--navy);
+  font-weight: 700;
+}
+
+.side-nav-icon {
+  font-size: .95rem; width: 26px; text-align: center; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.side-nav-label {
+  overflow: hidden; white-space: nowrap; transition: opacity .15s;
+}
+.side-nav.collapsed .side-nav-label { opacity: 0; pointer-events: none; }
+
+.side-nav-badge {
+  margin-left: auto; background: var(--amber); color: white;
+  font-size: .57rem; font-weight: 800; border-radius: 10px;
+  padding: 2px 6px; min-width: 18px; text-align: center; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.side-nav.collapsed .side-nav-badge { opacity: 0; pointer-events: none; }
+
+/* ── Collapse toggle ── */
+.side-nav-toggle {
+  margin: 8px; padding: 9px; border: none;
+  background: transparent; border-radius: 7px; border: 1px solid var(--border);
+  color: var(--sub); cursor: pointer; flex-shrink: 0;
+  font-size: .8rem; transition: background .15s, color .15s, border-color .15s;
+  text-align: center; width: calc(100% - 16px);
+}
+.side-nav-toggle:hover { background: var(--surface-2); color: var(--charcoal); border-color: var(--charcoal); }
+
+/* ══ Mobile — bottom tab bar, sidebar overlay, header simplification ══ */
+
+/* Desktop: filter button hidden */
+.mobile-filter-btn { display: none; }
+
+/* Tab bar hidden on desktop */
+.mobile-tab-bar { display: none; }
+
+@media (max-width: 640px) {
+  body { padding-left: 0 !important; }
+  .side-nav { display: none; }
+
+  /* ── Bottom tab bar ── */
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; height: 58px;
+    background: #0d1a2e;
+    border-top: 1px solid rgba(255,255,255,.12);
+    z-index: 300; justify-content: space-around; align-items: stretch;
+  }
+  .mobile-tab {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2px;
+    flex: 1; text-decoration: none;
+    color: rgba(255,255,255,.5); font-family: 'Lato', sans-serif;
+    font-size: .6rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; transition: color .15s;
+  }
+  .mobile-tab.active { color: white; }
+  .mobile-tab-icon { font-size: 1.15rem; line-height: 1; position: relative; }
+  .mobile-tab-badge {
+    position: absolute; top: -4px; right: -6px;
+    background: var(--amber); color: #1c0f00;
+    font-size: .5rem; font-weight: 800; border-radius: 8px;
+    padding: 1px 4px; min-width: 14px; text-align: center;
+  }
+
+  /* Push all page content above tab bar; allow stacked layouts to scroll */
+  .body { padding-bottom: 58px; overflow-y: auto; }
+
+  /* ── Sidebar overlay (full-screen slide-in drawer) ── */
+  .sidebar {
+    display: block !important; /* override display:none from 700px rule */
+    position: fixed; top: 64px; left: 0; right: 0; bottom: 58px;
+    z-index: 200; overflow-y: auto;
+    background: var(--surface-2);
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    width: auto !important; /* override fixed desktop widths */
+    border-right: none; box-shadow: 4px 0 24px rgba(0,0,0,.3);
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; z-index: 199;
+    background: rgba(0,0,0,.45);
+  }
+  .sidebar-overlay.mobile-open { display: block; }
+
+  /* ── Mobile filter button ── */
+  .mobile-filter-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+    color: white; border-radius: 5px; padding: 5px 10px;
+    cursor: pointer; font-family: 'Lato', sans-serif;
+    font-size: .72rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ── Header simplification ── */
+  .header { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 12px; gap: 6px; }
+  .brand h1 { display: none; }
+  .app-chevron { display: none; }
+  .hdr-divider { display: none; }
+  .hdr-search { display: none; }
+  .hdr-today-btn { font-size: .75rem; padding: 5px 10px; flex-shrink: 0; }
+}
+
+/* ── Dark mode tab bar ── */
+[data-theme="dark"] .mobile-tab-bar {
+  background: var(--surface-3);
+  border-top-color: rgba(255,255,255,.08);
+}
+
+/* ══ Role picker (side nav bottom, always visible) ════════ */
+.sn-role-picker {
+  padding: 10px 8px 14px;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  flex-shrink: 0;
+}
+.sn-role-label {
+  font-size: .58rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sub); padding: 0 4px 7px; font-family: 'Lato', sans-serif;
+}
+.sn-role-btns { display: flex; gap: 4px; }
+.sn-role-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--sub); cursor: pointer;
+  padding: 5px 2px; transition: all .12s; font-size: .7rem;
+}
+.sn-role-btn:hover { background: var(--surface-3); color: var(--charcoal); }
+.sn-role-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
+.sn-role-btn-label { font-size: .55rem; font-family: 'Lato', sans-serif; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.side-nav.collapsed .sn-role-picker { display: none; }
+@media (max-width: 640px) { .sn-role-picker { display: none; } }
+
+/* ── Sidebar user footer ── */
+.sn-user-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 10px 14px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sn-user-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700; font-size: .75rem; color: white;
+  flex-shrink: 0;
+}
+.sn-user-text { flex: 1; min-width: 0; overflow: hidden; }
+.sn-user-name {
+  font-size: .78rem; font-weight: 700;
+  color: var(--charcoal);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sn-user-role {
+  font-size: .62rem; color: var(--sub);
+  text-transform: uppercase; letter-spacing: .06em; font-weight: 700;
+}
+.sn-logout-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 5px; padding: 4px 7px;
+  font-size: .75rem; cursor: pointer; color: var(--sub);
+  transition: all .12s; flex-shrink: 0;
+}
+.sn-logout-btn:hover { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.side-nav.collapsed .sn-user-footer { padding: 8px 6px 12px; justify-content: center; }
+.side-nav.collapsed .sn-user-text,
+.side-nav.collapsed .sn-logout-btn { display: none; }
+
+/* dark mode */
+[data-theme="dark"] .sn-user-footer { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .sn-user-name { color: rgba(255,255,255,.8); }
+[data-theme="dark"] .sn-logout-btn { border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.35); }
+[data-theme="dark"] .sn-logout-btn:hover { background: rgba(185,28,28,.2); color: #f87171; border-color: #7f1d1d; }
+
+/* ══ Header role chip + popover ════════════════════════════ */
+.hdr-role-wrap {
+  position: relative; flex-shrink: 0;
+}
+.hdr-role-chip {
+  font-size: .72rem; font-weight: 700; font-family: 'Lato', sans-serif;
+  padding: 4px 10px; border-radius: 20px; border: 1px solid;
+  cursor: pointer; transition: opacity .12s; white-space: nowrap; letter-spacing: .02em;
+}
+.hdr-role-chip:hover { opacity: .8; }
+.hdr-role-drop {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.14);
+  padding: 5px; z-index: 200; min-width: 130px;
+}
+.hdr-role-wrap.open .hdr-role-drop { display: block; }
+.hdr-role-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 10px; border: none; background: none; cursor: pointer;
+  font-size: .8rem; color: var(--text); border-radius: 6px; transition: background .1s;
+  font-family: 'Lato', sans-serif;
+}
+.hdr-role-btn:hover { background: var(--bg); }
+.hdr-role-btn.active { background: var(--navy); color: white; font-weight: 700; }
+[data-theme="dark"] .hdr-role-btn.active { background: var(--cream); color: var(--navy); }
+
+/* ══ Dark mode overrides ══════════════════════════════════ */
+
+/* Header dark mode — keep same solid dark as light mode */
+[data-theme="dark"] .header,
+[data-theme="dark"] .hdr {
+  background: #0d1a2e;
+}
+
+/* Dropdown gets enhanced shadow (surface-1 already applies correct bg) */
+[data-theme="dark"] .app-drop { box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+
+/* Items use charcoal token (maps to var(--charcoal) in dark) */
+[data-theme="dark"] .app-drop-item { color: var(--charcoal); }
+
+/* Hover uses a slate-blue that's distinct from surface-2 in dark */
+[data-theme="dark"] .app-drop-item:hover,
+[data-theme="dark"] .app-drop-item:focus { background: #253550; }
+
+/* ── Sidebar dark mode overrides ── */
+[data-theme="dark"] .side-nav {
+  background: var(--surface-3);
+  border-right-color: rgba(255,255,255,.06);
+}
+[data-theme="dark"] .side-nav-logo { border-bottom-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .side-nav-logo-label { color: rgba(255,255,255,.85); }
+[data-theme="dark"] .sn-brand-w { background: #4B90C8; box-shadow: 0 2px 8px rgba(75,144,200,.4); }
+[data-theme="dark"] .side-nav-item { color: rgba(255,255,255,.45); }
+[data-theme="dark"] .side-nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); }
+[data-theme="dark"] .side-nav-item.active { background: rgba(75,144,200,.15); color: #7EB8F7; box-shadow: inset 3px 0 0 #4B90C8; }
+[data-theme="dark"] .side-nav-toggle { background: transparent; border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.3); }
+[data-theme="dark"] .side-nav-toggle:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.75); }
+[data-theme="dark"] .sn-role-picker { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .sn-role-label { color: rgba(255,255,255,.35); }
+[data-theme="dark"] .sn-role-btn { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.4); }
+[data-theme="dark"] .sn-role-btn:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.8); }
+[data-theme="dark"] .sn-role-btn.active { background: #4B90C8; border-color: #4B90C8; color: white; }

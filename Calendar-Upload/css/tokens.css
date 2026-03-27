@@ -1,0 +1,74 @@
+/* ══════════════════════════════════════════════════════════
+   DESIGN TOKENS — Watermark Church Calendar Suite
+   ──────────────────────────────────────────────────────────
+   All hardcoded colors in shell.css, calendar.css, and
+   rooms.css should reference these variables.
+
+   SURFACES (light → dark auto-switch)
+     --surface-1   cards, modals, dropdowns, panels
+     --surface-2   page background, sidebar, subtle fills
+     --surface-3   inputs, alternate rows, inset areas
+
+   PALETTE (theme-aware)
+     --navy        primary dark heading / icon color
+     --charcoal    body text
+     --sub         secondary / muted text
+     --border      divider lines
+     --cream       warm background highlight
+     --blue        accent / link / active indicator
+     --blue-lt     light blue (dark-mode accent text)
+     --slate       mid-tone UI gray
+     --green       success
+     --red         error / warning
+     --amber       attention (volunteer / pending)
+
+   SPACING
+     --radius-sm   4px
+     --radius-md   6px
+     --radius-lg   10px
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Surfaces ── */
+  --surface-1: #FFFFFF;
+  --surface-2: #F2F0EC;
+  --surface-3: #E5E1DB;
+
+  /* ── Palette ── */
+  --navy:      #1D252C;
+  --charcoal:  #1D252C;
+  --sub:       #7E8FA0;
+  --border:    #d4cfc9;
+  --cream:     #f5f0ea;
+  --blue:      #4B90C8;
+  --blue-lt:   #7EB8F7;
+  --slate:     #2A3548;
+  --green:     #16a34a;
+  --red:       #dc2626;
+  --amber:     #f59e0b;
+
+  /* ── Spacing ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+[data-theme="dark"] {
+  /* ── Surfaces ── */
+  --surface-1: #1E2840;
+  --surface-2: #161C28;
+  --surface-3: #131824;
+
+  /* ── Palette ── */
+  --navy:      #7EB8F7;
+  --charcoal:  #E0DAD2;
+  --sub:       #7E8FA0;
+  --border:    #2d3748;
+  --cream:     #1A2232;
+  --blue:      #4B90C8;
+  --blue-lt:   #7EB8F7;
+  --slate:     #253050;
+  --green:     #22c55e;
+  --red:       #f87171;
+  --amber:     #fbbf24;
+}

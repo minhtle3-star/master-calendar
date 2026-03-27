@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — Watermark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+<script src="js/auth.js"></script>
+<script>
+  // Already signed in → redirect
+  (function () {
+    const s = Auth.getSession();
+    if (s) {
+      const p = new URLSearchParams(window.location.search);
+      window.location.href = p.get('redirect') || 'index.html';
+    }
+  })();
+</script>
+
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <div class="login-brand-w"><span>W</span></div>
+      <div>
+        <div class="login-brand-name">Watermark</div>
+        <div class="login-brand-sub">Community Church</div>
+      </div>
+    </div>
+
+    <h1 class="login-title">Welcome back</h1>
+    <p class="login-sub">Sign in to access the ministry portal</p>
+
+    <div id="login-error" class="login-error" style="display:none">
+      <span>⚠</span><span id="login-error-text"></span>
+    </div>
+
+    <form class="login-form" onsubmit="handleLogin(event)" autocomplete="on">
+      <div class="login-field">
+        <label class="login-label" for="login-username">Username</label>
+        <input class="login-input" id="login-username" type="text"
+          placeholder="e.g. jmartinez"
+          autocomplete="username" autofocus>
+      </div>
+      <div class="login-field">
+        <label class="login-label" for="login-password">Password</label>
+        <div class="login-pw-wrap">
+          <input class="login-input" id="login-password" type="password"
+            placeholder="••••••••••"
+            autocomplete="current-password">
+          <button type="button" class="login-pw-toggle" onclick="togglePw()" title="Show/hide password">👁</button>
+        </div>
+      </div>
+      <button class="login-btn" type="submit" id="login-btn">
+        <span id="login-btn-text">Sign In</span>
+        <span id="login-spinner" style="display:none;font-size:.75rem;">Signing in…</span>
+      </button>
+    </form>
+
+    <div class="login-hint">
+      <strong>Demo Accounts — all use password: <code>watermark2026</code></strong>
+      <span class="login-hint-users">
+        <b>jmartinez</b> or <b>mwilliams</b> → Admin &nbsp;·&nbsp;
+        <b>skim</b>, <b>tbradford</b>, or <b>rtorres</b> → Staff &nbsp;·&nbsp;
+        <b>viewer</b> → Viewer
+      </span>
+    </div>
+
+  </div>
+  <div class="login-footer">Watermark Community Church · Ministry Portal</div>
+</div>
+
+<script>
+async function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!username || !password) {
+    showError('Please enter your username and password.');
+    return;
+  }
+
+  setLoading(true);
+  const result = await Auth.login(username, password);
+  setLoading(false);
+
+  if (result.ok) {
+    const p = new URLSearchParams(window.location.search);
+    window.location.href = p.get('redirect') || 'index.html';
+  } else {
+    showError(result.error);
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-password').focus();
+    document.querySelector('.login-card').classList.add('shake');
+    setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('login-error');
+  document.getElementById('login-error-text').textContent = msg;
+  el.style.display = 'flex';
+}
+
+function setLoading(on) {
+  document.getElementById('login-btn').disabled = on;
+  document.getElementById('login-btn-text').style.display = on ? 'none' : '';
+  document.getElementById('login-spinner').style.display = on ? '' : 'none';
+}
+
+function togglePw() {
+  const inp = document.getElementById('login-password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+</body>
+</html>

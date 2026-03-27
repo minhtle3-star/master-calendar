@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Access — Watermark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/rooms.css?v=4">
+<style>
+  .sec-page-shell {
+    padding: 16px 20px 40px;
+    max-width: 900px;
+  }
+  /* Hide the security panel header top-padding since we have the app header */
+  .sec-page-shell .security-panel {
+    display: block !important;
+    background: none;
+    padding: 0;
+  }
+</style>
+</head>
+<body>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js?v=4"></script>
+<script src="js/roles.js?v=2"></script>
+
+<!-- ══ Header ══ -->
+<div class="hdr">
+  <div class="brand" id="brand-btn" onclick="toggleDrop(this)">
+    <div class="brand-w"><span>W</span></div>
+    <h1>Security Access</h1>
+    <span class="app-chevron">▾</span>
+    <div class="app-drop">
+      <a class="app-drop-item" href="index.html"><span class="app-drop-icon">📅</span> Calendar</a>
+      <a class="app-drop-item" href="admin.html"><span class="app-drop-icon">⚙️</span> Ministry Admin</a>
+      <a class="app-drop-item" href="budget.html"><span class="app-drop-icon">💰</span> Budget Planner</a>
+      <a class="app-drop-item" href="rooms.html"><span class="app-drop-icon">🏢</span> Room Planner</a>
+      <a class="app-drop-item current" href="security.html"><span class="app-drop-icon">🔒</span> Security Access<span class="app-drop-check">✓</span></a>
+      <a class="app-drop-item" href="event-request.html"><span class="app-drop-icon">📋</span> Event Request</a>
+    </div>
+  </div>
+  <div class="hdr-divider"></div>
+  <!-- rooms.js updateHeader() writes here; hidden since security panel shows its own date -->
+  <span class="hdr-title" id="hdr-date-lbl" style="display:none"></span>
+  <button id="theme-toggle" class="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+</div>
+
+<!-- ══ Security panel (main content) ══ -->
+<div class="sec-page-shell">
+  <div id="security-panel" class="security-panel"></div>
+</div>
+
+<!-- ══ Hidden stubs required by rooms.js ══ -->
+<div style="display:none" aria-hidden="true">
+  <input type="date" id="date-pick">
+  <div id="gantt-outer"></div>
+  <div id="legend-bar"></div>
+  <div id="dashboard-view"></div>
+  <div id="util-panel"></div>
+  <button id="sec-btn"></button>
+  <button id="dash-btn"></button>
+  <button id="util-btn"></button>
+  <div id="pending-rooms-banner"></div>
+  <div id="bldg-tabs"></div>
+  <!-- block popup -->
+  <div id="block-popup">
+    <div id="pp-title"></div><span id="pp-badge"></span>
+    <div id="pp-time"></div><div id="pp-room"></div><div id="pp-link-wrap"></div>
+  </div>
+  <!-- reservation panel -->
+  <div id="rsv-overlay"></div>
+  <div id="rsv-panel">
+    <select id="rsv-room"></select>
+    <input id="rsv-ev-search" type="text"><div id="rsv-ev-dropdown"></div>
+    <input id="rsv-ev-link" type="hidden">
+    <input id="rsv-subject" type="text">
+    <select id="rsv-ministry"></select>
+    <input id="rsv-date" type="date">
+    <input id="rsv-start" type="time"><input id="rsv-end" type="time">
+    <input id="rsv-has-setup" type="checkbox">
+    <div id="setup-fields">
+      <input id="rsv-setup-mins" type="number">
+      <select id="rsv-setup-type"></select>
+      <div id="setup-vol-wrap"><textarea id="rsv-setup-volunteers"></textarea></div>
+    </div>
+    <input id="rsv-has-teardown" type="checkbox">
+    <div id="teardown-fields">
+      <input id="rsv-teardown-mins" type="number">
+      <select id="rsv-teardown-type"></select>
+      <div id="teardown-vol-wrap"><textarea id="rsv-teardown-volunteers"></textarea></div>
+    </div>
+    <input id="rsv-requested-by" type="text">
+    <textarea id="rsv-security-notes"></textarea>
+  </div>
+  <!-- closures panel -->
+  <div id="closures-overlay"></div>
+  <div id="closures-panel">
+    <div id="closures-list"></div>
+    <input id="cl-name" type="text"><select id="cl-type"></select>
+    <input id="cl-start" type="date"><input id="cl-end" type="date">
+    <textarea id="cl-note"></textarea>
+  </div>
+  <!-- rooms modal -->
+  <div id="rooms-modal"><div id="rooms-modal-body"></div></div>
+</div>
+
+<script src="js/shell.js?v=2"></script>
+<script src="js/room-seed.js?v=1"></script>
+<script src="js/rooms.js?v=8"></script>
+<script>
+  // rooms.js auto-calls init() and renderPendingRoomsBanner() at load time,
+  // which triggers buildGantt() on the hidden stub — that's fine.
+  // Now show the security dashboard in the visible panel.
+  _showSecurity = true;
+  _secWeekOffset = 0;
+  buildSecurityDashboard();
+</script>
+</body>
+</html>
